@@ -97,6 +97,16 @@ class QuestsRepository {
         .watch();
   }
 
+  Stream<List<Quest>> watchAllPendingQuests(String userId) {
+    return (_db.select(_db.questsTable)
+          ..where(
+            (q) =>
+                q.userId.equals(userId) &
+                q.status.equals(QuestStatus.pending.name),
+          ))
+        .watch();
+  }
+
   /// Marks a quest as done and awards its XP to the linked stat.
   Future<void> completeQuest(String userId, String questId) async {
     final quest = await getQuest(userId, questId);

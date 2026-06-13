@@ -1,5 +1,4 @@
 import 'package:drift/drift.dart';
-
 import 'package:operator_os/core/constants.dart';
 import 'package:operator_os/data/database.dart';
 import 'package:operator_os/data/database_provider.dart';

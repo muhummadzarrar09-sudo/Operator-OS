@@ -11,3 +11,19 @@ final questsByDomainStreamProvider = StreamProvider.family<List<Quest>, String>(
   if (userId == null) return Stream.value([]);
   return ref.watch(questsRepositoryProvider).watchPendingQuestsByDomain(userId, domain);
 });
+
+final todayQuestsProvider = StreamProvider<List<Quest>>((ref) {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return Stream.value([]);
+  final now = DateTime.now();
+  final start = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
+  final end = DateTime(now.year, now.month, now.day, 23, 59, 59, 999).millisecondsSinceEpoch;
+
+  return ref
+      .watch(questsRepositoryProvider)
+      .watchAllPendingQuests(userId)
+      .map((quests) => quests.where((q) {
+            if (q.dueDate == null) return true;
+            return q.dueDate! >= start && q.dueDate! <= end;
+          }).toList());
+});
