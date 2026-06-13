@@ -1,0 +1,1 @@
+Image assets go here (e.g. forge_t1.png, forge_t2.png, etc.).

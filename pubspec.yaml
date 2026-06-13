@@ -1,0 +1,41 @@
+name: operator_os
+description: "A personal gamified life-tracking app."
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^3.3.2
+  riverpod_annotation: ^4.0.3
+  drift: ^2.34.0
+  drift_flutter: ^0.3.0
+  sqlite3: ^3.3.0
+  supabase_flutter: ^2.14.1
+  fl_chart: ^1.2.0
+  flutter_animate: ^4.5.0
+  path_provider: ^2.1.5
+  shared_preferences: ^2.5.0
+  uuid: ^4.5.0
+  intl: ^0.20.0
+  collection: ^1.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.15.0
+  drift_dev: ^2.34.0
+  riverpod_generator: ^4.0.4
+  # riverpod_lint/custom_lint omitted: riverpod_lint 3.1.4 (riverpod 3.x) requires
+  # analyzer_plugin ^0.14.0, but custom_lint (latest 0.8.1) caps at ^0.13.0 -
+  # unresolvable until custom_lint catches up. Revisit later.
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/compound/
