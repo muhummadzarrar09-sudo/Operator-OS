@@ -1,6 +1,6 @@
 import 'dart:math';
-import 'dart:typed_data';
 
+import 'package:drift/drift.dart';
 import 'package:operator_os/data/database.dart';
 import 'package:operator_os/services/ai_service.dart';
 import 'package:operator_os/services/embedding_service.dart';

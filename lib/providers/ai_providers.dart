@@ -1,7 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:operator_os/data/database.dart';
 import 'package:operator_os/data/database_provider.dart';
-import 'package:operator_os/data/repositories/boss_repository.dart';
 import 'package:operator_os/data/repositories/journal_repository.dart';
 import 'package:operator_os/data/repositories/quests_repository.dart';
 import 'package:operator_os/providers/ai_service_provider.dart';
@@ -14,7 +12,6 @@ final entryPopulationServiceProvider = Provider<EntryPopulationService>((ref) {
     ref.read(appDatabaseProvider),
     ref.read(journalRepositoryProvider),
     ref.read(questsRepositoryProvider),
-    ref.read(bossRepositoryProvider),
   );
 });
 

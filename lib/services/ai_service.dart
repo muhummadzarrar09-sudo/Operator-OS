@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 /// Abstract interface for on-device AI operations.
 /// Implementations handle model initialization, text generation, and embeddings.
 abstract class AiService {

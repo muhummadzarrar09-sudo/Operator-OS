@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:operator_os/providers/ai_providers.dart';
 import 'package:operator_os/providers/ai_service_provider.dart';
 import 'package:operator_os/providers/auth_provider.dart';
-import 'package:operator_os/services/rag_service.dart';
 
 class WeeklyInsightsScreen extends ConsumerStatefulWidget {
   const WeeklyInsightsScreen({super.key});

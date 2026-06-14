@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:operator_os/providers/ai_providers.dart';
 import 'package:operator_os/providers/ai_service_provider.dart';
 import 'package:operator_os/providers/auth_provider.dart';
-import 'package:operator_os/services/rag_service.dart';
 
 class FutureSelfChatScreen extends ConsumerStatefulWidget {
   const FutureSelfChatScreen({super.key});

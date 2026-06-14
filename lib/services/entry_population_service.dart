@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:operator_os/data/database.dart';
-import 'package:operator_os/data/repositories/boss_repository.dart';
 import 'package:operator_os/data/repositories/journal_repository.dart';
 import 'package:operator_os/data/repositories/quests_repository.dart';
 import 'package:uuid/uuid.dart';
@@ -13,13 +12,11 @@ class EntryPopulationService {
   final AppDatabase _db;
   final JournalRepository _journalRepo;
   final QuestsRepository _questsRepo;
-  final BossRepository _bossRepo;
 
   EntryPopulationService(
     this._db,
     this._journalRepo,
     this._questsRepo,
-    this._bossRepo,
   );
 
   /// Scans all source tables and upserts into `entries`.

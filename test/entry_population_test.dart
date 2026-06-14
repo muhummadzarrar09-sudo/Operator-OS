@@ -2,7 +2,6 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:operator_os/core/constants.dart';
 import 'package:operator_os/data/database.dart';
-import 'package:operator_os/data/repositories/boss_repository.dart';
 import 'package:operator_os/data/repositories/journal_repository.dart';
 import 'package:operator_os/data/repositories/quests_repository.dart';
 import 'package:operator_os/data/repositories/stats_repository.dart';
@@ -17,12 +16,10 @@ void main() {
       final statsRepo = StatsRepository(db);
       final journalRepo = JournalRepository(db);
       final questsRepo = QuestsRepository(db, statsRepo);
-      final bossRepo = BossRepository(db);
       final populator = EntryPopulationService(
         db,
         journalRepo,
         questsRepo,
-        bossRepo,
       );
 
       await statsRepo.ensureStatsSeeded('user-1');
@@ -71,7 +68,6 @@ void main() {
         db,
         journalRepo,
         QuestsRepository(db, StatsRepository(db)),
-        BossRepository(db),
       );
 
       await journalRepo.saveEntry(

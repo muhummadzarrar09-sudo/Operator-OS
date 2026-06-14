@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'ai_service.dart';
 
@@ -8,7 +7,6 @@ import 'ai_service.dart';
 /// Text generation returns canned responses.
 class MockAiService implements AiService {
   static const int _embeddingDim = 768;
-  final Random _random = Random(42);
   bool _initialized = false;
 
   @override
