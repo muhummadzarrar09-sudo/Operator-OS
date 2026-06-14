@@ -2,6 +2,14 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
+/// Replaces the Time class removed from flutter_local_notifications v14+.
+class Time {
+  final int hour;
+  final int minute;
+  final int second;
+  const Time(this.hour, [this.minute = 0, this.second = 0]);
+}
+
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;

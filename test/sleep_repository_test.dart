@@ -1,6 +1,5 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:operator_os/core/constants.dart';
 import 'package:operator_os/data/database.dart';
 import 'package:operator_os/data/repositories/roadmap_repository.dart';
 import 'package:operator_os/data/repositories/sleep_repository.dart';

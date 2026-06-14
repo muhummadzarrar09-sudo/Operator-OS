@@ -18,7 +18,6 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
   TimeOfDay _wakeTime = const TimeOfDay(hour: 6, minute: 30);
 
   static final _timeFormat = DateFormat('h:mm a');
-  static final _dateFormat = DateFormat('EEE, MMM d');
 
   @override
   Widget build(BuildContext context) {

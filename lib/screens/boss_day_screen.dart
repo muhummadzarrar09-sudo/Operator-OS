@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:operator_os/core/constants.dart';
-import 'package:operator_os/data/database.dart';
 import 'package:operator_os/data/repositories/boss_repository.dart';
 import 'package:operator_os/data/repositories/quests_repository.dart';
 import 'package:operator_os/providers/auth_provider.dart';
-import 'package:operator_os/providers/boss_provider.dart';
 
 class BossDayScreen extends ConsumerStatefulWidget {
   final DateTime date;

@@ -5,10 +5,10 @@ import 'package:operator_os/providers/roadmap_provider.dart';
 import 'package:operator_os/providers/user_initializer.dart';
 import 'package:operator_os/screens/compound_screen.dart';
 import 'package:operator_os/screens/journal_screen.dart';
+import 'package:operator_os/screens/ai_hub_screen.dart';
 import 'package:operator_os/screens/roadmap_screen.dart';
 import 'package:operator_os/screens/sleep_log_screen.dart';
 import 'package:operator_os/screens/today_screen.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:operator_os/services/notification_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -54,6 +54,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       const JournalScreen(),
       const SleepLogScreen(),
       const RoadmapScreen(),
+      const AiHubScreen(),
     ];
 
     return Scaffold(
@@ -82,6 +83,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today),
             label: 'Roadmap',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.psychology),
+            label: 'AI',
           ),
         ],
       ),
