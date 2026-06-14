@@ -31,7 +31,6 @@ class BuildingConfig {
 
   static const double ghostOffsetX = 40;
   static const double ghostOffsetY = 40;
-}
 
   static String tierName(int tier) {
     return switch (tier) {

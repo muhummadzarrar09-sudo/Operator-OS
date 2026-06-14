@@ -27,3 +27,9 @@ final todayQuestsProvider = StreamProvider<List<Quest>>((ref) {
             return q.dueDate! >= start && q.dueDate! <= end;
           }).toList());
 });
+
+final questsByRoadmapDayProvider = StreamProvider.family<List<Quest>, String>((ref, roadmapDayId) {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return Stream.value([]);
+  return ref.watch(questsRepositoryProvider).watchQuestsByRoadmapDay(userId, roadmapDayId);
+});

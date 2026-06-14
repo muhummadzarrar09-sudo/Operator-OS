@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/constants.dart';
 import 'core/theme.dart';
 import 'data/sync_service.dart';
+import 'services/notification_service.dart';
 import 'screens/splash_screen.dart';
 
 Future<void> main() async {
@@ -13,6 +14,7 @@ Future<void> main() async {
     url: SupabaseConstants.url,
     publishableKey: SupabaseConstants.publishableKey,
   );
+  await NotificationService().initialize();
   runApp(const ProviderScope(child: OperatorOSApp()));
 }
 

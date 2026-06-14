@@ -196,7 +196,7 @@ class _RadarChart extends StatelessWidget {
 
     final values = SubStatsConfig.parseValues(subStatsJson);
     final entries = labels.map((label) {
-      final value = (values[label] ?? 0).toDouble().clamp(0, 100);
+      final value = (values[label] ?? 0).toDouble().clamp(0, 100).toDouble();
       return RadarEntry(value: value);
     }).toList();
 
@@ -271,7 +271,7 @@ class _AddQuestForm extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<QuestTier>(
-              value: selectedTier,
+              initialValue: selectedTier,
               decoration: const InputDecoration(
                 labelText: 'Tier',
                 border: OutlineInputBorder(),

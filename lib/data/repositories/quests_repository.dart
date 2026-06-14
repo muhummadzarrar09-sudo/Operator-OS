@@ -70,6 +70,23 @@ class QuestsRepository {
         .get();
   }
 
+  Future<bool> hasCompletedBossQuestInRange(String userId, DateTime start, DateTime end) async {
+    final startMs = start.millisecondsSinceEpoch;
+    final endMs = end.millisecondsSinceEpoch;
+    final quests = await (_db.select(_db.questsTable)
+          ..where(
+            (q) =>
+                q.userId.equals(userId) &
+                q.tier.equals(QuestTier.boss.name) &
+                q.status.equals(QuestStatus.done.name) &
+                q.completedAt.isNotNull() &
+                q.completedAt.isBiggerOrEqualValue(startMs) &
+                q.completedAt.isSmallerOrEqualValue(endMs),
+          ))
+        .get();
+    return quests.isNotEmpty;
+  }
+
   Future<List<Quest>> getAllQuestsByDomain(String userId, String domain) async {
     return (_db.select(_db.questsTable)
           ..where(
@@ -103,6 +120,26 @@ class QuestsRepository {
             (q) =>
                 q.userId.equals(userId) &
                 q.status.equals(QuestStatus.pending.name),
+          ))
+        .watch();
+  }
+
+  Future<List<Quest>> getQuestsByRoadmapDay(String userId, String roadmapDayId) async {
+    return (_db.select(_db.questsTable)
+          ..where(
+            (q) =>
+                q.userId.equals(userId) &
+                q.roadmapDayId.equals(roadmapDayId),
+          ))
+        .get();
+  }
+
+  Stream<List<Quest>> watchQuestsByRoadmapDay(String userId, String roadmapDayId) {
+    return (_db.select(_db.questsTable)
+          ..where(
+            (q) =>
+                q.userId.equals(userId) &
+                q.roadmapDayId.equals(roadmapDayId),
           ))
         .watch();
   }
