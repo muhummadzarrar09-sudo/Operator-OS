@@ -1,0 +1,2 @@
+D:/00000. Operator OS/operator_os/android/app/.cxx/release/294n4fn4/armeabi-v7a/CMakeFiles/edit_cache.dir
+D:/00000. Operator OS/operator_os/android/app/.cxx/release/294n4fn4/armeabi-v7a/CMakeFiles/rebuild_cache.dir

@@ -1,10 +1,8 @@
 $ProjectDir = "D:\00000. Operator OS\operator_os"
 
-# Your actual JDK17 path (Eclipse Adoptium)
 $env:JAVA_HOME    = "C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot"
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
 
-# Add everything Flutter needs including PowerShell itself
 $env:PATH = "$env:JAVA_HOME\bin;" +
             "$env:USERPROFILE\flutter\bin;" +
             "C:\Program Files\Git\cmd;" +
@@ -20,17 +18,26 @@ $sdk = $env:ANDROID_HOME -replace "\\","\\"
 $fl  = "$env:USERPROFILE\flutter"  -replace "\\","\\"
 "sdk.dir=$sdk`nflutter.sdk=$fl`nflutter.buildMode=release`nflutter.versionName=1.0.0`nflutter.versionCode=1" | Set-Content "$ProjectDir\android\local.properties"
 
+# Fix compileSdk warning before building
+$buildGradle = "$ProjectDir\android\app\build.gradle.kts"
+(Get-Content $buildGradle) -replace "compileSdk = 35", "compileSdk = 36" | Set-Content $buildGradle
+
 Set-Location $ProjectDir
 
-Write-Host "[1/3] flutter pub get..." -ForegroundColor Cyan
+Write-Host "[1/4] flutter pub get..." -ForegroundColor Cyan
 flutter pub get
 if ($LASTEXITCODE -ne 0) { Write-Host "pub get FAILED" -ForegroundColor Red; exit 1 }
 
-Write-Host "[2/3] flutter build apk --release..." -ForegroundColor Cyan
+Write-Host "[2/4] dart run build_runner build (generating .g.dart files)..." -ForegroundColor Cyan
+dart run build_runner build
+if ($LASTEXITCODE -ne 0) { Write-Host "build_runner FAILED" -ForegroundColor Red; exit 1 }
+
+Write-Host "[3/4] flutter build apk --release..." -ForegroundColor Cyan
 flutter build apk --release
 if ($LASTEXITCODE -ne 0) { Write-Host "build FAILED" -ForegroundColor Red; exit 1 }
 
 $apk = Join-Path $ProjectDir "build\app\outputs\flutter-apk\app-release.apk"
+Write-Host "[4/4] Checking output..." -ForegroundColor Cyan
 if (Test-Path $apk) {
     $size = [math]::Round((Get-Item $apk).Length / 1MB, 1)
     Write-Host "SUCCESS -> $apk ($size MB)" -ForegroundColor Green
