@@ -6,6 +6,10 @@
         android:label="operator_os"
         android:name="${applicationName}"
         android:icon="@android:drawable/sym_def_app_icon">
+        <!-- Explicit Flutter embedding v2 declaration. Do NOT use v1 APIs. -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

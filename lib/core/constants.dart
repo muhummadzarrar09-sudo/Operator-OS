@@ -1,7 +1,7 @@
 class SupabaseConstants {
   // TODO: Replace these with your real Supabase project values before running.
-  static const String url = 'https://your-project.supabase.co';
-  static const String publishableKey = 'your-publishable-or-anon-key';
+  static const String url = 'https://nvgiinvawxnzfsnprohg.supabase.co';
+  static const String publishableKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52Z2lpbnZhd3huemZzbnByb2hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzI3MDMsImV4cCI6MjA5NzE0ODcwM30.sULhMLRWaRljyd3GV5b0z3E_Y1YzqU5qjPpjbTOaRLY';
 }
 
 class XpConfig {
