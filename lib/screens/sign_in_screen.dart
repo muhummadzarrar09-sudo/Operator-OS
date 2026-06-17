@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
+import 'home_screen.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
@@ -13,11 +14,21 @@ class SignInScreen extends ConsumerStatefulWidget {
 class _SignInScreenState extends ConsumerState<SignInScreen> {
   final _emailController = TextEditingController();
   bool _isSending = false;
+  bool _redirected = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     super.dispose();
+  }
+
+  void _goHome() {
+    if (_redirected || !mounted) return;
+    _redirected = true;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
+      (route) => false,
+    );
   }
 
   Future<void> _sendMagicLink() async {
@@ -44,6 +55,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // When the magic-link deep link establishes a session, the auth stream
+    // flips this provider to true and we leave the sign-in screen for good.
+    ref.listen(isAuthenticatedProvider, (previous, next) {
+      if (next) _goHome();
+    });
     return Scaffold(
       body: SafeArea(
         child: Padding(

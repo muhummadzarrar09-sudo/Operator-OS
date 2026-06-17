@@ -34,6 +34,13 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="io.supabase.operatoros" android:host="callback" />
             </intent-filter>
+            <!-- Deep link for Supabase magic-link (email OTP) callback -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="io.supabase.operatoros" android:host="login-callback" />
+            </intent-filter>
         </activity>
     </application>
 </manifest>
