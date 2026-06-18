@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:operator_os/core/building_config.dart';
 import 'package:operator_os/core/constants.dart';
+import 'package:operator_os/core/operator_style.dart';
 
 class BuildingWidget extends StatefulWidget {
   final String statKey;
@@ -9,6 +10,7 @@ class BuildingWidget extends StatefulWidget {
   final int currentXp;
   final int tier;
   final bool hasPendingQuests;
+  final bool isBehindPace;
   final bool isGhost;
   final VoidCallback? onTap;
 
@@ -18,6 +20,7 @@ class BuildingWidget extends StatefulWidget {
     required this.currentXp,
     required this.tier,
     this.hasPendingQuests = false,
+    this.isBehindPace = false,
     this.isGhost = false,
     this.onTap,
     super.key,
@@ -49,95 +52,117 @@ class _BuildingWidgetState extends State<BuildingWidget> {
     Widget building = GestureDetector(
       onTap: widget.onTap,
       child: SizedBox(
-        width: 120,
-        height: 120,
+        width: 132,
+        height: 142,
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // XP progress ring
+            Positioned(
+              bottom: 8,
+              child: Container(
+                width: 106,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: widget.isGhost ? 0.10 : 0.26),
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: widget.isGhost ? 0.16 : 0.28),
+                      blurRadius: 18,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+              ),
+            ),
             SizedBox(
-              width: 110,
-              height: 110,
+              width: 118,
+              height: 118,
               child: CircularProgressIndicator(
                 value: progress,
                 strokeWidth: 6,
-                backgroundColor: Colors.grey.withValues(alpha: 0.3),
-                valueColor: AlwaysStoppedAnimation(color),
-              ),
-            ),
-            // Building image or placeholder
-            Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: widget.isGhost ? 0.35 : 0.85),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: color.withValues(alpha: widget.isGhost ? 0.2 : 1.0),
-                  width: 2,
+                backgroundColor: OperatorPalette.borderDim.withValues(alpha: 0.55),
+                valueColor: AlwaysStoppedAnimation(
+                  widget.isGhost ? OperatorPalette.hologramBlue.withValues(alpha: 0.55) : color,
                 ),
               ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Placeholder base
-                  Center(
-                    child: Text(
-                      '${widget.statKey.toUpperCase()}\nT${widget.tier}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  // Asset overlay
-                  Image.asset(
-                    'assets/compound/${widget.statKey}_t${widget.tier}.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                  ),
-                ],
-              ),
             ),
-            // Level badge
+            _BuildingShell(
+              statKey: widget.statKey,
+              tier: widget.tier,
+              color: color,
+              isGhost: widget.isGhost,
+              isBehindPace: widget.isBehindPace,
+            ),
             Positioned(
               bottom: 4,
               right: 4,
               child: Container(
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.8),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1),
+                  color: OperatorPalette.voidBlack.withValues(alpha: 0.88),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: widget.isGhost ? OperatorPalette.hologramBlue : OperatorPalette.parchmentGold,
+                    width: 1,
+                  ),
                 ),
                 child: Text(
-                  'Lv${widget.level}',
+                  widget.isGhost ? 'Pace ${widget.level}' : 'Lv ${widget.level}',
                   style: const TextStyle(
                     fontSize: 10,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                    color: OperatorPalette.textPrimary,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
             ),
-            // Notification dot
             if (widget.hasPendingQuests && !widget.isGhost)
               Positioned(
-                top: 4,
-                right: 4,
+                top: 8,
+                right: 8,
                 child: Container(
-                  width: 14,
-                  height: 14,
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                    border: Border.fromBorderSide(
-                      BorderSide(color: Colors.white, width: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: OperatorPalette.warningAmber,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: OperatorPalette.voidBlack, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: OperatorPalette.warningAmber.withValues(alpha: 0.5),
+                        blurRadius: 12,
+                      ),
+                    ],
+                  ),
+                  child: const Text(
+                    'MISSION',
+                    style: TextStyle(
+                      fontSize: 8,
+                      color: OperatorPalette.voidBlack,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.4,
                     ),
                   ),
+                ),
+              ),
+            if (widget.isBehindPace && !widget.isGhost)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: OperatorPalette.hologramBlue.withValues(alpha: 0.95),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: OperatorPalette.voidBlack, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: OperatorPalette.hologramBlue.withValues(alpha: 0.45),
+                        blurRadius: 12,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.trending_up, size: 11, color: OperatorPalette.voidBlack),
                 ),
               ),
           ],
@@ -146,21 +171,20 @@ class _BuildingWidgetState extends State<BuildingWidget> {
     );
 
     if (shouldAnimate) {
-      // Glow overlay
       building = Stack(
         alignment: Alignment.center,
         children: [
           building,
           Container(
-            width: 120,
-            height: 120,
+            width: 132,
+            height: 132,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(22),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.amber.withValues(alpha: 0.6),
-                  blurRadius: 30,
-                  spreadRadius: 10,
+                  color: OperatorPalette.parchmentGold.withValues(alpha: 0.6),
+                  blurRadius: 34,
+                  spreadRadius: 12,
                 ),
               ],
             ),
@@ -172,7 +196,6 @@ class _BuildingWidgetState extends State<BuildingWidget> {
         ],
       );
 
-      // Scale pulse
       building = building
           .animate()
           .scale(duration: 250.ms, begin: const Offset(1.0, 1.0), end: const Offset(1.2, 1.2))
@@ -192,5 +215,165 @@ class _BuildingWidgetState extends State<BuildingWidget> {
     final xpInLevel = widget.currentXp - currentLevelBase;
     final xpNeeded = nextLevelBase - currentLevelBase;
     return xpInLevel / xpNeeded;
+  }
+}
+
+class _BuildingShell extends StatelessWidget {
+  final String statKey;
+  final int tier;
+  final Color color;
+  final bool isGhost;
+  final bool isBehindPace;
+
+  const _BuildingShell({
+    required this.statKey,
+    required this.tier,
+    required this.color,
+    required this.isGhost,
+    required this.isBehindPace,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final shellColor = isGhost ? OperatorPalette.hologramBlue : color;
+    return Container(
+      width: 94,
+      height: 94,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            shellColor.withValues(alpha: isGhost ? 0.18 : 0.72),
+            OperatorPalette.panelRaised.withValues(alpha: isGhost ? 0.12 : 0.96),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(_radiusForTier(tier)),
+        border: Border.all(
+          color: isBehindPace && !isGhost
+              ? OperatorPalette.hologramBlue.withValues(alpha: 0.85)
+              : shellColor.withValues(alpha: isGhost ? 0.55 : 0.95),
+          width: isBehindPace && !isGhost ? 2.5 : (isGhost ? 1.5 : 2),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: shellColor.withValues(alpha: isGhost ? 0.18 : 0.30),
+            blurRadius: 18,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CustomPaint(
+            painter: _BuildingPatternPainter(color: shellColor, tier: tier, isGhost: isGhost),
+          ),
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(_iconForStat(statKey), color: OperatorPalette.textPrimary, size: 28),
+                const SizedBox(height: 5),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: Text(
+                    OperatorCopy.shortStatLabel(statKey).toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                      color: OperatorPalette.textPrimary,
+                    ),
+                  ),
+                ),
+                Text(
+                  'T$tier',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: isGhost ? OperatorPalette.hologramBlue : OperatorPalette.parchmentGold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Image.asset(
+            'assets/compound/${statKey}_t$tier.png',
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+          if (isGhost)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: OperatorPalette.hologramBlue.withValues(alpha: 0.08),
+                  border: Border.all(color: OperatorPalette.hologramBlue.withValues(alpha: 0.28)),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  double _radiusForTier(int tier) {
+    return switch (tier) {
+      1 => 18,
+      2 => 15,
+      3 => 12,
+      _ => 10,
+    };
+  }
+
+  IconData _iconForStat(String statKey) {
+    return switch (statKey) {
+      'forge' => Icons.local_fire_department,
+      'academy' => Icons.school,
+      'leverage' => Icons.handshake,
+      'presence' => Icons.campaign,
+      'craft' => Icons.brush,
+      'vitality' => Icons.fitness_center,
+      'capital' => Icons.account_balance,
+      'clarity' => Icons.visibility,
+      _ => Icons.home_work,
+    };
+  }
+}
+
+class _BuildingPatternPainter extends CustomPainter {
+  final Color color;
+  final int tier;
+  final bool isGhost;
+
+  _BuildingPatternPainter({required this.color, required this.tier, required this.isGhost});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withValues(alpha: isGhost ? 0.18 : 0.22)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+
+    final roofHeight = size.height * (0.22 + tier * 0.025);
+    final roof = Path()
+      ..moveTo(size.width * 0.14, roofHeight)
+      ..lineTo(size.width * 0.50, size.height * 0.07)
+      ..lineTo(size.width * 0.86, roofHeight);
+    canvas.drawPath(roof, paint);
+
+    for (int i = 0; i < tier; i++) {
+      final y = size.height * (0.70 - i * 0.12);
+      canvas.drawLine(Offset(size.width * 0.22, y), Offset(size.width * 0.78, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BuildingPatternPainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.tier != tier || oldDelegate.isGhost != isGhost;
   }
 }

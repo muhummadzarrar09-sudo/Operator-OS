@@ -66,7 +66,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.today),
-            label: 'Today',
+            label: 'Command',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.map),
@@ -74,19 +74,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.book),
-            label: 'Journal',
+            label: 'Reflect',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.bedtime),
-            label: 'Sleep',
+            label: 'Recovery',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today),
-            label: 'Roadmap',
+            label: 'Campaign',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.psychology),
-            label: 'AI',
+            label: 'Council',
           ),
         ],
       ),
