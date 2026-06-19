@@ -1,17 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:operator_os/core/operator_style.dart';
 import 'package:operator_os/providers/ai_providers.dart';
 import 'package:operator_os/providers/ai_service_provider.dart';
 import 'package:operator_os/providers/auth_provider.dart';
 import 'package:operator_os/screens/future_self_chat_screen.dart';
-import 'package:operator_os/screens/model_vault_screen.dart';
-import 'package:operator_os/screens/war_council_brief_screen.dart';
 import 'package:operator_os/screens/weekly_insights_screen.dart';
-import 'package:operator_os/services/ai_runtime_status.dart';
 import 'package:operator_os/services/ai_service.dart';
-import 'package:operator_os/services/gemma_ai_service.dart';
-import 'package:operator_os/widgets/operator_card.dart';
 
 class AiHubScreen extends ConsumerStatefulWidget {
   const AiHubScreen({super.key});
@@ -30,20 +24,20 @@ class _AiHubScreenState extends ConsumerState<AiHubScreen> {
 
     setState(() {
       _indexing = true;
-      _status = 'Gathering records for the Memory Archive...';
+      _status = 'Populating entries...';
     });
 
     final populator = ref.read(entryPopulationServiceProvider);
     final populated = await populator.populateAll(userId);
 
-    setState(() => _status = 'Embedding $populated memory records...');
+    setState(() => _status = 'Embedding $populated entries...');
 
     final embedder = ref.read(embeddingServiceProvider);
     final embedded = await embedder.embedAllUnembedded(userId);
 
     setState(() {
       _indexing = false;
-      _status = 'Archive refreshed: $populated records gathered, $embedded prepared for Council review.';
+      _status = 'Done: $populated entries populated, $embedded embedded.';
     });
   }
 
@@ -52,122 +46,59 @@ class _AiHubScreenState extends ConsumerState<AiHubScreen> {
     final ai = ref.read(aiServiceProvider);
 
     return Scaffold(
-      backgroundColor: OperatorPalette.voidBlack,
       appBar: AppBar(
-        title: const Text('War Council'),
+        title: const Text('AI & Insights'),
         actions: [
           IconButton(
-            tooltip: 'Sign out',
             icon: const Icon(Icons.logout),
             onPressed: () => ref.read(authProvider.notifier).signOut(),
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _CouncilHeader(ai: ai),
+            _AiStatusCard(ai: ai),
             const SizedBox(height: 16),
-            OperatorCard(
-              label: 'MEMORY ARCHIVE',
-              title: 'Refresh records for Council review.',
-              body: 'Journal entries, missions, and Boss Day notes become memory records for future briefings.',
-              icon: Icons.auto_stories_outlined,
-              accentColor: OperatorPalette.hologramBlue,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 42,
-                        width: 42,
-                        decoration: BoxDecoration(
-                          color: OperatorPalette.hologramBlue.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: OperatorPalette.hologramBlue.withValues(alpha: 0.35),
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.auto_stories_outlined,
-                          color: OperatorPalette.hologramBlue,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('MEMORY ARCHIVE', style: OperatorTextStyles.overline),
-                            SizedBox(height: 6),
-                            Text('Prepare records for the Council.', style: OperatorTextStyles.title),
-                            SizedBox(height: 8),
-                            Text(
-                              'Refresh memories before asking for deeper guidance or weekly reports.',
-                              style: OperatorTextStyles.body,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: _indexing ? null : _indexData,
-                    icon: _indexing
-                        ? const SizedBox(
-                            height: 16,
-                            width: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.refresh),
-                    label: const Text('Refresh Memory Archive'),
-                  ),
-                  if (_status.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Text(_status, style: OperatorTextStyles.muted),
-                  ],
-                ],
-              ),
+            ElevatedButton.icon(
+              onPressed: _indexing ? null : _indexData,
+              icon: _indexing
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh),
+              label: const Text('Index Data for AI'),
             ),
+            if (_status.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                _status,
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ],
             const SizedBox(height: 24),
-            const Text('COUNCIL CHAMBERS', style: OperatorTextStyles.overline),
-            const SizedBox(height: 12),
-            _FeatureCard(
-              icon: Icons.memory_outlined,
-              title: 'Model Vault',
-              subtitle: 'Inspect Gemma readiness, model file detection, and fallback mode.',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ModelVaultScreen()),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _FeatureCard(
-              icon: Icons.psychology_alt_outlined,
-              title: 'Council Brief',
-              subtitle: 'Generate a Morning Brief, Tactical Adjustment, or Mission Forge plan.',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const WarCouncilBriefScreen()),
-              ),
+            const Text(
+              'Features',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             _FeatureCard(
               icon: Icons.insights,
-              title: 'Boss Council Report',
-              subtitle: 'Weekly strategic review of progress, leaks, and the next move.',
+              title: 'Weekly Insights',
+              subtitle: 'AI-generated recap of your week.',
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const WeeklyInsightsScreen()),
               ),
             ),
             const SizedBox(height: 12),
             _FeatureCard(
-              icon: Icons.forum_outlined,
-              title: 'Future Self Portal',
-              subtitle: 'Ask about decisions, patterns, fears, and high-leverage moves.',
+              icon: Icons.chat_bubble_outline,
+              title: 'Future Self Chat',
+              subtitle: 'Ask your future self anything.',
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const FutureSelfChatScreen()),
               ),
@@ -179,52 +110,42 @@ class _AiHubScreenState extends ConsumerState<AiHubScreen> {
   }
 }
 
-class _CouncilHeader extends StatelessWidget {
+class _AiStatusCard extends StatelessWidget {
   final AiService ai;
 
-  const _CouncilHeader({required this.ai});
+  const _AiStatusCard({required this.ai});
 
   @override
   Widget build(BuildContext context) {
-    if (ai is GemmaAiService) {
-      return FutureBuilder<AiRuntimeReport>(
-        future: (ai as GemmaAiService).runtimeReport(),
-        builder: (context, snap) {
-          final report = snap.data;
-          if (report == null) {
-            return const OperatorCard(
-              label: 'COUNCIL STATUS',
-              title: 'Inspecting Model Vault...',
-              body: 'Checking local Gemma readiness while keeping fallback mode safe.',
-              icon: Icons.memory_outlined,
-              accentColor: OperatorPalette.hologramBlue,
-            );
-          }
-          return OperatorCard(
-            label: 'COUNCIL STATUS',
-            title: report.status,
-            body: '${report.detail}\n\nMode: ${report.mode}\nModel: ${report.modelName}',
-            icon: report.hasDetectedModel ? Icons.check_circle_outline : Icons.shield_outlined,
-            accentColor: report.hasDetectedModel
-                ? OperatorPalette.successGreen
-                : OperatorPalette.parchmentGold,
-          );
-        },
-      );
-    }
-
     return FutureBuilder<bool>(
       future: ai.initialize(),
       builder: (context, snap) {
-        final online = snap.data ?? false;
-        return OperatorCard(
-          label: 'COUNCIL STATUS',
-          title: online ? 'Council interface online.' : 'Council interface limited.',
-          body: online
-              ? 'Fallback mode is active in this build. Briefings and memory workflows are available.'
-              : 'The War Council is not fully available yet. Memory features may be limited.',
-          icon: online ? Icons.shield_outlined : Icons.info_outline,
-          accentColor: online ? OperatorPalette.parchmentGold : OperatorPalette.warningAmber,
+        final ready = snap.data ?? false;
+        return Card(
+          color: ready ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(
+                  ready ? Icons.check_circle : Icons.info_outline,
+                  color: ready ? Colors.green : Colors.orange,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    ready
+                        ? 'AI model ready. You can generate embeddings and insights.'
+                        : 'AI model not available. Running in mock mode for development.',
+                    style: TextStyle(
+                      color: ready ? Colors.green : Colors.orange,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -246,13 +167,14 @@ class _FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OperatorCard(
-      icon: icon,
-      title: title,
-      body: subtitle,
-      accentColor: OperatorPalette.parchmentGold,
-      trailing: const Icon(Icons.chevron_right, color: OperatorPalette.textSecondary),
-      onTap: onTap,
+    return Card(
+      child: ListTile(
+        leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
+        title: Text(title),
+        subtitle: Text(subtitle),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
+      ),
     );
   }
 }

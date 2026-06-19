@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:operator_os/core/operator_style.dart';
 import 'package:operator_os/data/database.dart';
 import 'package:operator_os/data/repositories/sleep_repository.dart';
 import 'package:operator_os/providers/auth_provider.dart';
 import 'package:operator_os/providers/sleep_provider.dart';
-import 'package:operator_os/widgets/operator_card.dart';
 
 class SleepLogScreen extends ConsumerStatefulWidget {
   const SleepLogScreen({super.key});
@@ -27,12 +25,10 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
     final sleepAsync = ref.watch(sleepLogsProvider);
 
     return Scaffold(
-      backgroundColor: OperatorPalette.voidBlack,
       appBar: AppBar(
-        title: const Text('Recovery Shrine'),
+        title: const Text('Sleep Log'),
         actions: [
           IconButton(
-            tooltip: 'Sign out',
             icon: const Icon(Icons.logout),
             onPressed: () => ref.read(authProvider.notifier).signOut(),
           ),
@@ -43,36 +39,19 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const OperatorCard(
-              label: 'RECOVERY SHRINE',
-              title: 'Recovery is production.',
-              body: 'Sleep protects tomorrow’s missions. Hit the target and Vitality gains recovery XP.',
-              icon: Icons.bedtime_outlined,
-              accentColor: OperatorPalette.hologramBlue,
-            ),
-            const SizedBox(height: 16),
             _buildForm(userId),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                const Text('RECOVERY LOG', style: OperatorTextStyles.overline),
-                const Spacer(),
-                sleepAsync.maybeWhen(
-                  data: (logs) => Text('${logs.length} records', style: OperatorTextStyles.muted),
-                  orElse: () => const SizedBox.shrink(),
-                ),
-              ],
+            const Divider(height: 32),
+            const Text(
+              'History',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             sleepAsync.when(
               data: (logs) {
                 if (logs.isEmpty) {
-                  return const OperatorCard(
-                    label: 'NO RECORDS',
-                    title: 'The Shrine is quiet.',
-                    body: 'Log sleep to start tracking recovery and protecting the next day’s output.',
-                    icon: Icons.nightlight_round,
-                    accentColor: OperatorPalette.warningAmber,
+                  return const Text(
+                    'No sleep logs yet.',
+                    style: TextStyle(color: Colors.grey),
                   );
                 }
                 return Column(
@@ -89,50 +68,35 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
   }
 
   Widget _buildForm(String? userId) {
-    final estimatedHours = _estimatedDurationHours();
-    return OperatorCard(
-      label: 'TONIGHT\'S RECOVERY',
-      title: '${estimatedHours.toStringAsFixed(1)}h planned',
-      icon: Icons.spa_outlined,
-      accentColor: OperatorPalette.parchmentGold,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text('TONIGHT\'S RECOVERY', style: OperatorTextStyles.overline),
-          const SizedBox(height: 8),
-          Text('${estimatedHours.toStringAsFixed(1)}h planned', style: OperatorTextStyles.title),
-          const SizedBox(height: 6),
-          const Text('Protect the night. Tomorrow’s Compound runs on this.', style: OperatorTextStyles.body),
-          const SizedBox(height: 16),
-          _TimeTile(
-            icon: Icons.bedtime,
-            title: 'Bedtime',
-            value: _timeFormat.format(_timeToDate(_bedtime)),
-            onTap: () => _pickTime(context, _bedtime, (t) => setState(() => _bedtime = t)),
-          ),
-          const SizedBox(height: 10),
-          _TimeTile(
-            icon: Icons.wb_sunny_outlined,
-            title: 'Wake Time',
-            value: _timeFormat.format(_timeToDate(_wakeTime)),
-            onTap: () => _pickTime(context, _wakeTime, (t) => setState(() => _wakeTime = t)),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: userId == null ? null : () => _save(userId),
-            icon: const Icon(Icons.check_circle_outline),
-            label: const Text('Seal Recovery Log'),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Log Tonight',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 16),
+        ListTile(
+          leading: const Icon(Icons.bedtime),
+          title: const Text('Bedtime'),
+          subtitle: Text(_timeFormat.format(_timeToDate(_bedtime))),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _pickTime(context, _bedtime, (t) => setState(() => _bedtime = t)),
+        ),
+        ListTile(
+          leading: const Icon(Icons.wb_sunny),
+          title: const Text('Wake Time'),
+          subtitle: Text(_timeFormat.format(_timeToDate(_wakeTime))),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _pickTime(context, _wakeTime, (t) => setState(() => _wakeTime = t)),
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: userId == null ? null : () => _save(userId),
+          child: const Text('Save Sleep Log'),
+        ),
+      ],
     );
-  }
-
-  double _estimatedDurationHours() {
-    final bedtime = _timeToDate(_bedtime);
-    var wakeTime = _timeToDate(_wakeTime);
-    if (wakeTime.isBefore(bedtime)) wakeTime = wakeTime.add(const Duration(days: 1));
-    return wakeTime.difference(bedtime).inMinutes / 60.0;
   }
 
   DateTime _timeToDate(TimeOfDay time) {
@@ -169,60 +133,9 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: OperatorPalette.panelRaised,
-          content: Text('Recovery logged. The Vitality Grounds remember.'),
-        ),
+        const SnackBar(content: Text('Sleep logged.')),
       );
     }
-  }
-}
-
-class _TimeTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String value;
-  final VoidCallback onTap;
-
-  const _TimeTile({
-    required this.icon,
-    required this.title,
-    required this.value,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: OperatorPalette.voidBlack.withValues(alpha: 0.34),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: OperatorPalette.borderDim),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: OperatorPalette.parchmentGold),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: OperatorTextStyles.muted),
-                  const SizedBox(height: 2),
-                  Text(value, style: OperatorTextStyles.body),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right, color: OperatorPalette.textMuted),
-          ],
-        ),
-      ),
-    );
   }
 }
 
@@ -238,33 +151,21 @@ class _SleepLogCard extends StatelessWidget {
     final date = DateTime.fromMillisecondsSinceEpoch(log.date);
     final bedtime = DateTime.fromMillisecondsSinceEpoch(log.bedtime);
     final wake = DateTime.fromMillisecondsSinceEpoch(log.wakeTime);
-    final color = log.onTarget ? OperatorPalette.successGreen : OperatorPalette.warningAmber;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: OperatorCard(
-        accentColor: color,
-        child: Row(
-          children: [
-            Icon(log.onTarget ? Icons.check_circle : Icons.error_outline, color: color),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_dateFormat.format(date), style: OperatorTextStyles.title),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${_timeFormat.format(bedtime)} → ${_timeFormat.format(wake)} • ${log.durationHours.toStringAsFixed(1)}h',
-                    style: OperatorTextStyles.muted,
-                  ),
-                ],
-              ),
-            ),
-            if (log.onTarget)
-              const Text('+25 XP', style: TextStyle(color: OperatorPalette.successGreen, fontWeight: FontWeight.w900)),
-          ],
+    return Card(
+      child: ListTile(
+        leading: Icon(
+          log.onTarget ? Icons.check_circle : Icons.error_outline,
+          color: log.onTarget ? Colors.green : Colors.orange,
         ),
+        title: Text(_dateFormat.format(date)),
+        subtitle: Text(
+          '${_timeFormat.format(bedtime)} → ${_timeFormat.format(wake)} • '
+          '${log.durationHours.toStringAsFixed(1)}h',
+        ),
+        trailing: log.onTarget
+            ? const Text('+25 XP', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))
+            : null,
       ),
     );
   }

@@ -2,13 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:operator_os/core/constants.dart';
-import 'package:operator_os/core/operator_style.dart';
 import 'package:operator_os/data/database.dart';
 import 'package:operator_os/data/repositories/journal_repository.dart';
 import 'package:operator_os/providers/auth_provider.dart';
 import 'package:operator_os/providers/journal_provider.dart';
-import 'package:operator_os/services/memory_archive_refresh.dart';
-import 'package:operator_os/widgets/operator_card.dart';
 
 class JournalScreen extends ConsumerStatefulWidget {
   const JournalScreen({super.key});
@@ -79,12 +76,10 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
     }
 
     return Scaffold(
-      backgroundColor: OperatorPalette.voidBlack,
       appBar: AppBar(
-        title: const Text('Reflection Chamber'),
+        title: const Text('Journal'),
         actions: [
           IconButton(
-            tooltip: 'Sign out',
             icon: const Icon(Icons.logout),
             onPressed: () => ref.read(authProvider.notifier).signOut(),
           ),
@@ -95,36 +90,19 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const OperatorCard(
-              label: 'REFLECTION CHAMBER',
-              title: 'Archive the signal.',
-              body: 'Wins, lessons, plans, and big-picture notes become memory records for the War Council.',
-              icon: Icons.auto_stories_outlined,
-              accentColor: OperatorPalette.hologramBlue,
-            ),
-            const SizedBox(height: 16),
             _buildForm(userId),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                const Text('MEMORY TRAIL', style: OperatorTextStyles.overline),
-                const Spacer(),
-                historyAsync.maybeWhen(
-                  data: (entries) => Text('${entries.length} records', style: OperatorTextStyles.muted),
-                  orElse: () => const SizedBox.shrink(),
-                ),
-              ],
+            const Divider(height: 32),
+            const Text(
+              'History',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             historyAsync.when(
               data: (entries) {
                 if (entries.isEmpty) {
-                  return const OperatorCard(
-                    label: 'NO MEMORIES',
-                    title: 'The archive is empty.',
-                    body: 'Save a reflection to give the War Council better memory.',
-                    icon: Icons.history_edu_outlined,
-                    accentColor: OperatorPalette.warningAmber,
+                  return const Text(
+                    'No entries yet.',
+                    style: TextStyle(color: Colors.grey),
                   );
                 }
                 return Column(
@@ -141,80 +119,91 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
   }
 
   Widget _buildForm(String? userId) {
-    return OperatorCard(
-      label: 'TODAY\'S REFLECTION',
-      title: _moodLine(_mood),
-      icon: Icons.edit_note_outlined,
-      accentColor: OperatorPalette.parchmentGold,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text('TODAY\'S REFLECTION', style: OperatorTextStyles.overline),
-          const SizedBox(height: 8),
-          Text(_moodLine(_mood), style: OperatorTextStyles.title),
-          const SizedBox(height: 6),
-          const Text('Be honest. The Council can only read what you archive.', style: OperatorTextStyles.body),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<Mood>(
-            initialValue: _mood,
-            decoration: _inputDecoration('Mood'),
-            items: Mood.values.map((m) => DropdownMenuItem<Mood>(
-              value: m,
-              child: Text(m.name.toUpperCase()),
-            )).toList(),
-            onChanged: (v) => setState(() => _mood = v!),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Today\'s Entry',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<Mood>(
+          initialValue: _mood,
+          decoration: const InputDecoration(
+            labelText: 'Mood',
+            border: OutlineInputBorder(),
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _sleepHoursController,
-            decoration: _inputDecoration('Sleep Hours'),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          items: Mood.values.map((m) => DropdownMenuItem<Mood>(
+            value: m,
+            child: Text(m.name.toUpperCase()),
+          )).toList(),
+          onChanged: (v) => setState(() => _mood = v!),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _sleepHoursController,
+          decoration: const InputDecoration(
+            labelText: 'Sleep Hours',
+            border: OutlineInputBorder(),
           ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<SleepQuality>(
-            initialValue: _sleepQuality,
-            decoration: _inputDecoration('Sleep Quality'),
-            items: SleepQuality.values.map((s) => DropdownMenuItem<SleepQuality>(
-              value: s,
-              child: Text(s.name.toUpperCase()),
-            )).toList(),
-            onChanged: (v) => setState(() => _sleepQuality = v),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<SleepQuality>(
+          initialValue: _sleepQuality,
+          decoration: const InputDecoration(
+            labelText: 'Sleep Quality',
+            border: OutlineInputBorder(),
           ),
-          const SizedBox(height: 12),
-          _ReflectionField(controller: _winsController, label: 'Wins', hint: 'What strengthened the Compound today?'),
-          const SizedBox(height: 12),
-          _ReflectionField(controller: _lessonController, label: 'Lesson Learned', hint: 'What did the day teach you?'),
-          const SizedBox(height: 12),
-          _ReflectionField(controller: _tomorrowController, label: 'Tomorrow Plan', hint: 'What is the next clean move?'),
-          const SizedBox(height: 12),
-          _ReflectionField(controller: _bigPictureController, label: 'Big Picture Note', hint: 'What pattern should future you remember?', maxLines: 3),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: userId == null ? null : _save,
-            icon: const Icon(Icons.archive_outlined),
-            label: const Text('Archive Reflection'),
+          items: SleepQuality.values.map((s) => DropdownMenuItem<SleepQuality>(
+            value: s,
+            child: Text(s.name.toUpperCase()),
+          )).toList(),
+          onChanged: (v) => setState(() => _sleepQuality = v),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _winsController,
+          decoration: const InputDecoration(
+            labelText: 'Wins',
+            border: OutlineInputBorder(),
           ),
-        ],
-      ),
+          maxLines: 2,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _lessonController,
+          decoration: const InputDecoration(
+            labelText: 'Lesson Learned',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 2,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _tomorrowController,
+          decoration: const InputDecoration(
+            labelText: 'Tomorrow Plan',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 2,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _bigPictureController,
+          decoration: const InputDecoration(
+            labelText: 'Big Picture Note',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: userId == null ? null : _save,
+          child: const Text('Save Entry'),
+        ),
+      ],
     );
-  }
-
-  InputDecoration _inputDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: OperatorPalette.panelDark,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-    );
-  }
-
-  String _moodLine(Mood mood) {
-    return switch (mood) {
-      Mood.drained => 'Signal low. Archive the truth.',
-      Mood.okay => 'Stable signal. Capture the pattern.',
-      Mood.good => 'Good signal. Lock in the lesson.',
-      Mood.great => 'Strong signal. Record the win.',
-    };
   }
 
   Future<void> _save() async {
@@ -235,46 +224,11 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
       bigPictureNote: _bigPictureController.text.trim(),
     );
 
-    await refreshMemoryArchive(ref);
-
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: OperatorPalette.panelRaised,
-          content: Text('Reflection archived. The War Council remembers.'),
-        ),
+        const SnackBar(content: Text('Entry saved.')),
       );
     }
-  }
-}
-
-class _ReflectionField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final int maxLines;
-
-  const _ReflectionField({
-    required this.controller,
-    required this.label,
-    required this.hint,
-    this.maxLines = 2,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        filled: true,
-        fillColor: OperatorPalette.panelDark,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-      maxLines: maxLines,
-    );
   }
 }
 
@@ -288,31 +242,16 @@ class _JournalEntryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final date = DateTime.fromMillisecondsSinceEpoch(entry.date);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: OperatorCard(
-        accentColor: OperatorPalette.hologramBlue,
-        child: Row(
-          children: [
-            const Icon(Icons.history_edu_outlined, color: OperatorPalette.hologramBlue),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_dateFormat.format(date), style: OperatorTextStyles.title),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${entry.mood.toUpperCase()}${entry.sleepHours != null ? " • ${entry.sleepHours}h sleep" : ""}',
-                    style: OperatorTextStyles.muted,
-                  ),
-                ],
-              ),
-            ),
-            if (entry.sleepQuality != null)
-              Text(entry.sleepQuality!.toUpperCase(), style: OperatorTextStyles.muted),
-          ],
+    return Card(
+      child: ListTile(
+        title: Text(_dateFormat.format(date)),
+        subtitle: Text(
+          '${entry.mood.toUpperCase()}'
+          '${entry.sleepHours != null ? " • ${entry.sleepHours}h sleep" : ""}',
         ),
+        trailing: entry.sleepQuality != null
+            ? Text(entry.sleepQuality!.toUpperCase())
+            : null,
       ),
     );
   }

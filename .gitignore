@@ -11,11 +11,6 @@ build/
 *.iml
 .gradle
 /local.properties
-
-# Android signing secrets (keep out of version control)
-**/key.properties
-**/*.jks
-**/*.keystore
 /.idea/workspace.xml
 /.idea/libraries
 .DS_Store
