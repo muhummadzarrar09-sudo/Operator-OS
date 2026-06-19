@@ -154,7 +154,7 @@ class _CompoundViewState extends ConsumerState<_CompoundView> {
         child: Stack(
           children: [
             // Real buildings
-            ...stats.map((stat) {
+            ...widget.stats.map((stat) {
               final position = BuildingConfig.buildingPositions[stat.statKey]!;
               final tier = XpConfig.tierForLevel(stat.level);
               final pendingAsync = ref.watch(
@@ -186,7 +186,7 @@ class _CompoundViewState extends ConsumerState<_CompoundView> {
             }),
 
             // Ghost buildings
-            ...stats.map((stat) {
+            ...widget.stats.map((stat) {
               final position = BuildingConfig.buildingPositions[stat.statKey]!;
               final ghostTier = PaceConfig.paceTierForStat(stat.statKey, daysSinceInstall);
               final ghostLevel = PaceConfig.paceLevelForStat(stat.statKey, daysSinceInstall);
