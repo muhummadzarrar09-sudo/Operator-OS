@@ -3,9 +3,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
-        android:label="operator_os"
+        android:label="Operator OS"
         android:name="${applicationName}"
-        android:icon="@android:drawable/sym_def_app_icon">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round">
         <!-- Explicit Flutter embedding v2 declaration. Do NOT use v1 APIs. -->
         <meta-data
             android:name="flutterEmbedding"

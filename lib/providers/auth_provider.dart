@@ -1,8 +1,18 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show StateProvider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 part 'auth_provider.g.dart';
+
+const String localOperatorUserId = 'local-operator';
+const String _localModePrefsKey = 'operator_os_local_mode_enabled';
+
+/// Manual state used for the personal/offline mode. Supabase is still supported,
+/// but this lets the app boot and keep local Drift data even when Supabase auth
+/// is not configured or you just want the app for yourself.
+final localUserIdProvider = StateProvider<String?>((ref) => null);
 
 @riverpod
 class AuthNotifier extends _$AuthNotifier {
@@ -11,7 +21,21 @@ class AuthNotifier extends _$AuthNotifier {
     return Supabase.instance.client.auth.onAuthStateChange;
   }
 
-  String? get currentUserId => Supabase.instance.client.auth.currentUser?.id;
+  String? get currentUserId {
+    return Supabase.instance.client.auth.currentUser?.id ?? ref.read(localUserIdProvider);
+  }
+
+  Future<void> restoreLocalMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool(_localModePrefsKey) ?? false;
+    ref.read(localUserIdProvider.notifier).state = enabled ? localOperatorUserId : null;
+  }
+
+  Future<void> signInLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_localModePrefsKey, true);
+    ref.read(localUserIdProvider.notifier).state = localOperatorUserId;
+  }
 
   Future<void> signInWithGoogle() async {
     try {
@@ -44,6 +68,9 @@ class AuthNotifier extends _$AuthNotifier {
 
   Future<void> signOut() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_localModePrefsKey);
+      ref.read(localUserIdProvider.notifier).state = null;
       await Supabase.instance.client.auth.signOut();
     } catch (e) {
       debugPrint('Sign-out error (ignored): $e');
@@ -53,7 +80,8 @@ class AuthNotifier extends _$AuthNotifier {
 
 @riverpod
 String? currentUserId(Ref ref) {
-  // Re-evaluate whenever auth state changes.
+  // Re-evaluate whenever either Supabase auth or local/offline auth changes.
   ref.watch(authProvider);
-  return Supabase.instance.client.auth.currentUser?.id;
+  final localUserId = ref.watch(localUserIdProvider);
+  return Supabase.instance.client.auth.currentUser?.id ?? localUserId;
 }

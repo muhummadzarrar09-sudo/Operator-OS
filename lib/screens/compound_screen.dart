@@ -15,6 +15,7 @@ import 'package:operator_os/providers/stats_provider.dart';
 import 'package:operator_os/providers/user_initializer.dart';
 import 'package:operator_os/screens/stat_detail_screen.dart';
 import 'package:operator_os/widgets/building_widget.dart';
+import 'package:operator_os/widgets/operator_card.dart';
 import 'package:operator_os/widgets/operator_world_hud.dart';
 
 class CompoundScreen extends ConsumerWidget {
@@ -117,7 +118,7 @@ class _CompoundViewState extends ConsumerState<_CompoundView>
     super.initState();
     _ambientController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 14),
+      duration: const Duration(seconds: 10),
     )..repeat();
   }
 
@@ -126,6 +127,14 @@ class _CompoundViewState extends ConsumerState<_CompoundView>
     super.didChangeDependencies();
     if (!_didCenter) {
       _didCenter = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _centerView());
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _CompoundView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.stats.isEmpty && widget.stats.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _centerView());
     }
   }
@@ -140,44 +149,38 @@ class _CompoundViewState extends ConsumerState<_CompoundView>
   void _centerView() {
     if (!mounted) return;
     final renderObject = context.findRenderObject();
-    if (renderObject is! RenderBox) return;
+    if (renderObject is! RenderBox || renderObject.size.isEmpty) return;
 
-    final size = renderObject.size;
-    if (size.isEmpty) return;
-
+    final viewport = renderObject.size;
     final focus = _computeCentroid();
-    final scale = _initialScaleFor(size);
+    final scale = _initialScaleFor(viewport);
 
-    final matrix = Matrix4.identity()
-      ..translate(size.width / 2, size.height / 2)
+    _controller.value = Matrix4.identity()
+      ..translate(viewport.width / 2, viewport.height / 2)
       ..scale(scale)
       ..translate(-focus.dx, -focus.dy);
-
-    _controller.value = matrix;
   }
 
   void _zoomBy(double factor) {
     if (!mounted) return;
     final renderObject = context.findRenderObject();
-    if (renderObject is! RenderBox) return;
+    if (renderObject is! RenderBox || renderObject.size.isEmpty) return;
 
     final viewportCenter = renderObject.size.center(Offset.zero);
-    final currentScale = _controller.value.getMaxScaleOnAxis();
-    final nextScale = (currentScale * factor).clamp(0.25, 2.4).toDouble();
     final sceneCenter = _controller.toScene(viewportCenter);
+    final currentScale = _controller.value.getMaxScaleOnAxis();
+    final nextScale = (currentScale * factor).clamp(0.32, 1.9).toDouble();
 
-    final matrix = Matrix4.identity()
+    _controller.value = Matrix4.identity()
       ..translate(viewportCenter.dx, viewportCenter.dy)
       ..scale(nextScale)
       ..translate(-sceneCenter.dx, -sceneCenter.dy);
-
-    _controller.value = matrix;
   }
 
   double _initialScaleFor(Size viewport) {
-    final widthScale = viewport.width / (BuildingConfig.worldWidth * 0.62);
-    final heightScale = viewport.height / (BuildingConfig.worldHeight * 0.62);
-    return math.min(widthScale, heightScale).clamp(0.34, 0.66).toDouble();
+    final widthScale = viewport.width / (BuildingConfig.worldWidth * 0.82);
+    final heightScale = viewport.height / (BuildingConfig.worldHeight * 0.78);
+    return math.min(widthScale, heightScale).clamp(0.38, 0.78).toDouble();
   }
 
   Offset _computeCentroid() {
@@ -185,33 +188,29 @@ class _CompoundViewState extends ConsumerState<_CompoundView>
         .map((stat) => BuildingConfig.buildingPositions[stat.statKey])
         .whereType<Offset>()
         .toList();
-
     if (positions.isEmpty) {
-      return const Offset(
-        BuildingConfig.worldWidth / 2,
-        BuildingConfig.worldHeight / 2,
-      );
+      return const Offset(BuildingConfig.worldWidth / 2, BuildingConfig.worldHeight / 2);
     }
 
-    double sumX = 0;
-    double sumY = 0;
-    for (final pos in positions) {
-      sumX += pos.dx;
-      sumY += pos.dy;
+    double x = 0;
+    double y = 0;
+    for (final position in positions) {
+      x += position.dx;
+      y += position.dy;
     }
-    return Offset(sumX / positions.length, sumY / positions.length);
+    return Offset(x / positions.length, y / positions.length);
   }
 
   @override
   Widget build(BuildContext context) {
-    final rawDaysSinceInstall = DateTime.now().difference(widget.installDate).inDays;
-    final daysSinceInstall = math.max(0, rawDaysSinceInstall);
-    final pendingByStat = <String, AsyncValue<List<Quest>>>{};
+    if (widget.stats.isEmpty) {
+      return const _CompoundEmptyState();
+    }
 
+    final daysSinceInstall = math.max(0, DateTime.now().difference(widget.installDate).inDays);
+    final pendingByStat = <String, AsyncValue<List<Quest>>>{};
     for (final stat in widget.stats) {
-      pendingByStat[stat.statKey] = ref.watch(
-        questsByDomainStreamProvider(stat.statKey),
-      );
+      pendingByStat[stat.statKey] = ref.watch(questsByDomainStreamProvider(stat.statKey));
     }
 
     final entities = _buildWorldEntities(
@@ -219,9 +218,7 @@ class _CompoundViewState extends ConsumerState<_CompoundView>
       daysSinceInstall: daysSinceInstall,
     );
     final totalXp = widget.stats.fold<int>(0, (sum, stat) => sum + stat.currentXp);
-    final compoundLevel = widget.stats.isEmpty
-        ? 1
-        : (widget.stats.fold<int>(0, (sum, stat) => sum + stat.level) / widget.stats.length).floor();
+    final compoundLevel = (widget.stats.fold<int>(0, (sum, stat) => sum + stat.level) / widget.stats.length).floor();
     final activeMissions = pendingByStat.values.fold<int>(0, (sum, pending) {
       return sum + pending.when(
         data: (quests) => quests.length,
@@ -230,97 +227,85 @@ class _CompoundViewState extends ConsumerState<_CompoundView>
       );
     });
 
-    return Stack(
-      children: [
-        const Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  OperatorPalette.voidBlack,
-                  OperatorPalette.nightNavy,
-                  Color(0xFF071209),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Positioned.fill(
-          child: InteractiveViewer(
-            transformationController: _controller,
-            constrained: false,
-            clipBehavior: Clip.none,
-            boundaryMargin: const EdgeInsets.all(700),
-            minScale: 0.25,
-            maxScale: 2.4,
-            child: SizedBox(
-              width: BuildingConfig.worldWidth,
-              height: BuildingConfig.worldHeight,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  const Positioned.fill(
-                    child: RepaintBoundary(
-                      child: CustomPaint(
-                        painter: _CompoundTerrainPainter(),
+    return LayoutBuilder(
+      builder: (context, _) {
+        return Stack(
+          children: [
+            const Positioned.fill(child: _CompoundBackdrop()),
+            Positioned.fill(
+              child: InteractiveViewer(
+                transformationController: _controller,
+                constrained: false,
+                clipBehavior: Clip.hardEdge,
+                boundaryMargin: const EdgeInsets.all(360),
+                minScale: 0.32,
+                maxScale: 1.9,
+                child: SizedBox(
+                  width: BuildingConfig.worldWidth,
+                  height: BuildingConfig.worldHeight,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Positioned.fill(
+                        child: RepaintBoundary(
+                          child: CustomPaint(painter: _CompoundMapPainter()),
+                        ),
                       ),
-                    ),
+                      ...entities.map(
+                        (entity) => Positioned(
+                          left: entity.anchor.dx - BuildingConfig.buildingSpriteWidth / 2,
+                          top: entity.anchor.dy - BuildingConfig.buildingAnchorYOffset,
+                          child: RepaintBoundary(child: entity.child),
+                        ),
+                      ),
+                    ],
                   ),
-                  ...entities.map(
-                    (entity) => Positioned(
-                      left: entity.anchor.dx - BuildingConfig.buildingSpriteWidth / 2,
-                      top: entity.anchor.dy - BuildingConfig.buildingAnchorYOffset,
-                      child: RepaintBoundary(child: entity.child),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
-        Positioned.fill(
-          child: IgnorePointer(
-            child: AnimatedBuilder(
-              animation: _ambientController,
-              builder: (context, _) {
-                return CustomPaint(
-                  painter: _AtmospherePainter(_ambientController.value),
-                );
-              },
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _ambientController,
+                  builder: (context, _) {
+                    return CustomPaint(
+                      painter: _CompoundAtmospherePainter(_ambientController.value),
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
-        ),
-        Positioned(
-          left: 12,
-          right: 12,
-          top: 12,
-          child: SafeArea(
-            bottom: false,
-            child: OperatorWorldHud(
-              compoundLevel: compoundLevel,
-              totalXp: totalXp,
-              activeMissions: activeMissions,
-              campaignLabel: 'Compound Live',
-              councilLabel: 'Pinch + drag',
-              compact: true,
+            Positioned(
+              left: 12,
+              right: 12,
+              top: 12,
+              child: SafeArea(
+                bottom: false,
+                child: OperatorWorldHud(
+                  compoundLevel: compoundLevel,
+                  totalXp: totalXp,
+                  activeMissions: activeMissions,
+                  campaignLabel: 'Live Base',
+                  councilLabel: 'Drag / pinch',
+                  compact: true,
+                ),
+              ),
             ),
-          ),
-        ),
-        Positioned(
-          left: 12,
-          bottom: 14,
-          child: SafeArea(
-            top: false,
-            child: _WorldCameraControls(
-              onZoomIn: () => _zoomBy(1.18),
-              onZoomOut: () => _zoomBy(0.84),
-              onReset: _centerView,
+            Positioned(
+              left: 12,
+              bottom: 14,
+              child: SafeArea(
+                top: false,
+                child: _CameraControls(
+                  onZoomOut: () => _zoomBy(0.86),
+                  onReset: _centerView,
+                  onZoomIn: () => _zoomBy(1.16),
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -334,26 +319,24 @@ class _CompoundViewState extends ConsumerState<_CompoundView>
       final anchor = BuildingConfig.buildingPositions[stat.statKey];
       if (anchor == null) continue;
 
+      final ghostAnchor = BuildingConfig.ghostAnchorFor(anchor);
+      final ghostLevel = PaceConfig.paceLevelForStat(stat.statKey, daysSinceInstall);
+      final ghostTier = PaceConfig.paceTierForStat(stat.statKey, daysSinceInstall);
       final tier = XpConfig.tierForLevel(stat.level);
-      final pendingAsync = pendingByStat[stat.statKey];
-      final hasPending = pendingAsync?.when(
+      final hasPending = pendingByStat[stat.statKey]?.when(
             data: (quests) => quests.isNotEmpty,
             loading: () => false,
             error: (_, __) => false,
           ) ??
           false;
 
-      final ghostTier = PaceConfig.paceTierForStat(stat.statKey, daysSinceInstall);
-      final ghostLevel = PaceConfig.paceLevelForStat(stat.statKey, daysSinceInstall);
-      final ghostAnchor = BuildingConfig.ghostAnchorFor(anchor);
-
       entities.add(
         _WorldEntity(
           anchor: ghostAnchor,
-          sortY: ghostAnchor.dy - 0.5,
+          sortY: ghostAnchor.dy - 0.25,
           child: IgnorePointer(
             child: Opacity(
-              opacity: 0.46,
+              opacity: 0.42,
               child: BuildingWidget(
                 key: ValueKey('${stat.statKey}_ghost'),
                 statKey: stat.statKey,
@@ -379,7 +362,7 @@ class _CompoundViewState extends ConsumerState<_CompoundView>
             tier: tier,
             hasPendingQuests: hasPending,
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
+              MaterialPageRoute<void>(
                 builder: (_) => StatDetailScreen(statKey: stat.statKey),
               ),
             ),
@@ -389,10 +372,11 @@ class _CompoundViewState extends ConsumerState<_CompoundView>
     }
 
     entities.sort((a, b) {
-      final yCompare = a.sortY.compareTo(b.sortY);
-      if (yCompare != 0) return yCompare;
+      final byY = a.sortY.compareTo(b.sortY);
+      if (byY != 0) return byY;
       return a.anchor.dx.compareTo(b.anchor.dx);
     });
+
     return entities;
   }
 }
@@ -402,62 +386,51 @@ class _WorldEntity {
   final double sortY;
   final Widget child;
 
-  const _WorldEntity({
-    required this.anchor,
-    required this.sortY,
-    required this.child,
-  });
+  const _WorldEntity({required this.anchor, required this.sortY, required this.child});
 }
 
-class _WorldCameraControls extends StatelessWidget {
-  final VoidCallback onZoomIn;
-  final VoidCallback onZoomOut;
-  final VoidCallback onReset;
-
-  const _WorldCameraControls({
-    required this.onZoomIn,
-    required this.onZoomOut,
-    required this.onReset,
-  });
+class _CompoundEmptyState extends StatelessWidget {
+  const _CompoundEmptyState();
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
+    return const DecoratedBox(
       decoration: BoxDecoration(
-        color: OperatorPalette.panelDark.withValues(alpha: 0.78),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: OperatorPalette.borderDim),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.34),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [OperatorPalette.voidBlack, OperatorPalette.nightNavy],
+        ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(6),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _GlassIconButton(
-              icon: Icons.remove,
-              tooltip: 'Zoom out',
-              onPressed: onZoomOut,
-            ),
-            const SizedBox(width: 6),
-            _GlassIconButton(
-              icon: Icons.my_location,
-              tooltip: 'Center compound',
-              onPressed: onReset,
-              highlighted: true,
-            ),
-            const SizedBox(width: 6),
-            _GlassIconButton(
-              icon: Icons.add,
-              tooltip: 'Zoom in',
-              onPressed: onZoomIn,
-            ),
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.all(22),
+          child: OperatorCard(
+            icon: Icons.construction,
+            label: 'COMPOUND BOOTING',
+            title: 'Your local base is being prepared.',
+            body: 'If this stays here, enter Personal Mode again from the login screen. Supabase is not required for local mode.',
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompoundBackdrop extends StatelessWidget {
+  const _CompoundBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return const DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF07101E),
+            OperatorPalette.nightNavy,
+            Color(0xFF071109),
           ],
         ),
       ),
@@ -465,207 +438,166 @@ class _WorldCameraControls extends StatelessWidget {
   }
 }
 
-class _GlassIconButton extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-  final bool highlighted;
+class _CameraControls extends StatelessWidget {
+  final VoidCallback onZoomOut;
+  final VoidCallback onReset;
+  final VoidCallback onZoomIn;
 
-  const _GlassIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-    this.highlighted = false,
+  const _CameraControls({
+    required this.onZoomOut,
+    required this.onReset,
+    required this.onZoomIn,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = highlighted ? OperatorPalette.parchmentGold : OperatorPalette.hologramBlue;
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: OperatorPalette.panelDark.withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: OperatorPalette.borderDim),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.30),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _CameraButton(icon: Icons.remove, tooltip: 'Zoom out', onTap: onZoomOut),
+          const SizedBox(width: 6),
+          _CameraButton(icon: Icons.my_location, tooltip: 'Center', onTap: onReset, primary: true),
+          const SizedBox(width: 6),
+          _CameraButton(icon: Icons.add, tooltip: 'Zoom in', onTap: onZoomIn),
+        ],
+      ),
+    );
+  }
+}
 
+class _CameraButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final bool primary;
+
+  const _CameraButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.primary = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = primary ? OperatorPalette.parchmentGold : OperatorPalette.hologramBlue;
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: color.withValues(alpha: highlighted ? 0.18 : 0.10),
+        color: color.withValues(alpha: primary ? 0.18 : 0.10),
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          onTap: onPressed,
+          onTap: onTap,
           borderRadius: BorderRadius.circular(14),
-          child: SizedBox(
-            width: 42,
-            height: 42,
-            child: Icon(icon, color: color, size: 22),
-          ),
+          child: SizedBox(width: 42, height: 42, child: Icon(icon, color: color)),
         ),
       ),
     );
   }
 }
 
-class _AtmospherePainter extends CustomPainter {
-  final double progress;
+class _CompoundMapPainter extends CustomPainter {
+  static const Offset _center = Offset(BuildingConfig.worldWidth / 2, 650);
+  static const double _radiusX = 730;
+  static const double _radiusY = 430;
+  static const double _drop = 110;
+  static const double _tileW = 104;
+  static const double _tileH = 52;
 
-  const _AtmospherePainter(this.progress);
-
-  static const List<Offset> _particles = [
-    Offset(0.10, 0.72),
-    Offset(0.18, 0.38),
-    Offset(0.26, 0.82),
-    Offset(0.34, 0.28),
-    Offset(0.46, 0.66),
-    Offset(0.58, 0.46),
-    Offset(0.70, 0.76),
-    Offset(0.82, 0.34),
-    Offset(0.92, 0.62),
-  ];
+  const _CompoundMapPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.isEmpty) return;
+    final top = _diamond(_center, _radiusX, _radiusY);
+    final bottom = _diamond(_center.translate(0, _drop), _radiusX, _radiusY);
 
-    final hazePaint = Paint()
-      ..shader = RadialGradient(
-        center: Alignment(0.18 + math.sin(progress * math.pi * 2) * 0.08, -0.28),
-        radius: 1.2,
-        colors: [
-          OperatorPalette.torchOrange.withValues(alpha: 0.08),
-          OperatorPalette.hologramBlue.withValues(alpha: 0.025),
-          Colors.transparent,
-        ],
-      ).createShader(Offset.zero & size);
-    canvas.drawRect(Offset.zero & size, hazePaint);
-
-    for (int i = 0; i < _particles.length; i++) {
-      final seed = _particles[i];
-      final wave = (progress + i * 0.137) % 1.0;
-      final drift = math.sin((progress * math.pi * 2) + i) * 14;
-      final pos = Offset(
-        seed.dx * size.width + drift,
-        seed.dy * size.height - wave * 54,
-      );
-      final pulse = 0.45 + 0.55 * math.sin((progress * math.pi * 2) + i * 1.7).abs();
-      final radius = 1.8 + pulse * 2.6;
-      final paint = Paint()
-        ..color = (i.isEven ? OperatorPalette.torchOrange : OperatorPalette.hologramBlue)
-            .withValues(alpha: 0.15 + pulse * 0.23)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
-      canvas.drawCircle(pos, radius, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _AtmospherePainter oldDelegate) {
-    return oldDelegate.progress != progress;
-  }
-}
-
-class _CompoundTerrainPainter extends CustomPainter {
-  static const Offset _mapCenter = Offset(BuildingConfig.worldWidth / 2, 820);
-  static const Offset _plazaCenter = Offset(1070, 820);
-  static const double _mapRadiusX = 900;
-  static const double _mapRadiusY = 520;
-  static const double _edgeDrop = 145;
-  static const double _tileWidth = 128;
-  static const double _tileHeight = 64;
-
-  const _CompoundTerrainPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final top = _diamond(_mapCenter, _mapRadiusX, _mapRadiusY);
-    final bottomCenter = _mapCenter.translate(0, _edgeDrop);
-    final bottom = _diamond(bottomCenter, _mapRadiusX, _mapRadiusY);
-
-    _paintOuterGlow(canvas, bottom);
-    _paintIslandSides(canvas, bottom);
-    _paintTopTerrain(canvas, top);
+    _paintShadow(canvas, bottom);
+    _paintSides(canvas);
+    _paintTop(canvas, top);
 
     canvas.save();
     canvas.clipPath(top);
-    _paintTileGrid(canvas, top.getBounds());
+    _paintGrid(canvas, top.getBounds());
     _paintRoads(canvas);
     _paintPlaza(canvas);
-    _paintResourceProps(canvas);
+    _paintDecor(canvas);
     canvas.restore();
 
-    _paintWalls(canvas, top);
-    _paintCornerTowers(canvas);
+    _paintWall(canvas, top);
   }
 
-  void _paintOuterGlow(Canvas canvas, Path bottom) {
+  void _paintShadow(Canvas canvas, Path bottom) {
     canvas.drawPath(
-      bottom.shift(const Offset(0, 24)),
+      bottom.shift(const Offset(0, 18)),
       Paint()
         ..color = Colors.black.withValues(alpha: 0.34)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 28),
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 26),
     );
   }
 
-  void _paintIslandSides(Canvas canvas, Path bottom) {
-    final leftSide = Path()
-      ..moveTo(_mapCenter.dx - _mapRadiusX, _mapCenter.dy)
-      ..lineTo(_mapCenter.dx, _mapCenter.dy + _mapRadiusY)
-      ..lineTo(_mapCenter.dx, _mapCenter.dy + _mapRadiusY + _edgeDrop)
-      ..lineTo(_mapCenter.dx - _mapRadiusX, _mapCenter.dy + _edgeDrop)
+  void _paintSides(Canvas canvas) {
+    final left = Path()
+      ..moveTo(_center.dx - _radiusX, _center.dy)
+      ..lineTo(_center.dx, _center.dy + _radiusY)
+      ..lineTo(_center.dx, _center.dy + _radiusY + _drop)
+      ..lineTo(_center.dx - _radiusX, _center.dy + _drop)
       ..close();
-    final rightSide = Path()
-      ..moveTo(_mapCenter.dx + _mapRadiusX, _mapCenter.dy)
-      ..lineTo(_mapCenter.dx, _mapCenter.dy + _mapRadiusY)
-      ..lineTo(_mapCenter.dx, _mapCenter.dy + _mapRadiusY + _edgeDrop)
-      ..lineTo(_mapCenter.dx + _mapRadiusX, _mapCenter.dy + _edgeDrop)
+    final right = Path()
+      ..moveTo(_center.dx + _radiusX, _center.dy)
+      ..lineTo(_center.dx, _center.dy + _radiusY)
+      ..lineTo(_center.dx, _center.dy + _radiusY + _drop)
+      ..lineTo(_center.dx + _radiusX, _center.dy + _drop)
       ..close();
 
-    canvas.drawPath(leftSide, Paint()..color = const Color(0xFF234C25));
-    canvas.drawPath(rightSide, Paint()..color = const Color(0xFF173719));
-    canvas.drawPath(
-      bottom,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 4
-        ..color = Colors.black.withValues(alpha: 0.22),
-    );
+    canvas.drawPath(left, Paint()..color = const Color(0xFF284C27));
+    canvas.drawPath(right, Paint()..color = const Color(0xFF183616));
   }
 
-  void _paintTopTerrain(Canvas canvas, Path top) {
+  void _paintTop(Canvas canvas, Path top) {
     final bounds = top.getBounds();
-    final terrainPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color(0xFF4E8E3F),
-          Color(0xFF2D6B31),
-          Color(0xFF1F5025),
-        ],
-      ).createShader(bounds);
-
-    canvas.drawPath(top, terrainPaint);
     canvas.drawPath(
       top,
       Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 18
-        ..color = const Color(0xFF6E8A45).withValues(alpha: 0.55),
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF569A46), Color(0xFF2E6B33), Color(0xFF1E4E25)],
+        ).createShader(bounds),
     );
   }
 
-  void _paintTileGrid(Canvas canvas, Rect bounds) {
+  void _paintGrid(Canvas canvas, Rect bounds) {
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = Colors.white.withValues(alpha: 0.075);
     final fillA = Paint()..color = Colors.white.withValues(alpha: 0.018);
     final fillB = Paint()..color = Colors.black.withValues(alpha: 0.018);
-    final stroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
-      ..color = Colors.white.withValues(alpha: 0.08);
 
-    for (int row = -18; row <= 18; row++) {
-      for (int col = -18; col <= 18; col++) {
-        final center = Offset(
-          _mapCenter.dx + (col - row) * _tileWidth / 2,
-          _mapCenter.dy + (col + row) * _tileHeight / 2,
+    for (int row = -16; row <= 16; row++) {
+      for (int col = -16; col <= 16; col++) {
+        final tileCenter = Offset(
+          _center.dx + (col - row) * _tileW / 2,
+          _center.dy + (col + row) * _tileH / 2,
         );
-        final tile = _diamond(center, _tileWidth / 2, _tileHeight / 2);
+        final tile = _diamond(tileCenter, _tileW / 2, _tileH / 2);
         if (!tile.getBounds().overlaps(bounds)) continue;
         canvas.drawPath(tile, (row + col).isEven ? fillA : fillB);
-        canvas.drawPath(tile, stroke);
+        canvas.drawPath(tile, line);
       }
     }
   }
@@ -673,255 +605,143 @@ class _CompoundTerrainPainter extends CustomPainter {
   void _paintRoads(Canvas canvas) {
     final roadBase = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 54
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
-      ..color = const Color(0xFF6B4A2F).withValues(alpha: 0.78);
+      ..strokeWidth = 44
+      ..color = const Color(0xFF654B33).withValues(alpha: 0.80);
     final roadTop = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 32
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
-      ..color = const Color(0xFFC19A5B).withValues(alpha: 0.58);
+      ..strokeWidth = 24
+      ..color = const Color(0xFFC09A5D).withValues(alpha: 0.62);
 
     for (final anchor in BuildingConfig.buildingPositions.values) {
-      final midpoint = Offset(
-        (_plazaCenter.dx + anchor.dx) / 2,
-        (_plazaCenter.dy + anchor.dy) / 2 - 30,
-      );
+      final control = Offset((_center.dx + anchor.dx) / 2, (_center.dy + anchor.dy) / 2 - 24);
       final path = Path()
-        ..moveTo(_plazaCenter.dx, _plazaCenter.dy)
-        ..quadraticBezierTo(midpoint.dx, midpoint.dy, anchor.dx, anchor.dy);
+        ..moveTo(_center.dx, _center.dy)
+        ..quadraticBezierTo(control.dx, control.dy, anchor.dx, anchor.dy);
       canvas.drawPath(path, roadBase);
       canvas.drawPath(path, roadTop);
     }
   }
 
   void _paintPlaza(Canvas canvas) {
-    final plazaBase = _diamond(_plazaCenter, 190, 92);
-    final plazaInner = _diamond(_plazaCenter, 128, 58);
-
+    final outer = _diamond(_center, 170, 82);
+    final inner = _diamond(_center, 108, 50);
+    canvas.drawPath(outer, Paint()..color = const Color(0xFF4B3A2E));
+    canvas.drawPath(inner, Paint()..color = const Color(0xFF9D7A49));
     canvas.drawPath(
-      plazaBase,
-      Paint()..color = const Color(0xFF4D3D31).withValues(alpha: 0.92),
-    );
-    canvas.drawPath(
-      plazaInner,
-      Paint()..color = const Color(0xFF9B7A4E).withValues(alpha: 0.8),
-    );
-    canvas.drawPath(
-      plazaBase,
+      outer,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 4
+        ..strokeWidth = 3
         ..color = Colors.white.withValues(alpha: 0.18),
     );
   }
 
-  void _paintResourceProps(Canvas canvas) {
+  void _paintDecor(Canvas canvas) {
     const trees = [
-      Offset(440, 650),
-      Offset(520, 560),
-      Offset(1660, 700),
-      Offset(1540, 520),
-      Offset(520, 1080),
-      Offset(1520, 1210),
-      Offset(720, 1280),
-      Offset(1780, 910),
+      Offset(430, 560),
+      Offset(510, 800),
+      Offset(1320, 570),
+      Offset(1390, 840),
+      Offset(650, 1030),
+      Offset(1180, 1010),
     ];
-    const rocks = [
-      Offset(710, 485),
-      Offset(1340, 470),
-      Offset(410, 830),
-      Offset(1640, 1010),
-      Offset(1010, 1290),
-      Offset(1360, 1295),
+    const stones = [
+      Offset(690, 390),
+      Offset(1120, 390),
+      Offset(420, 690),
+      Offset(1420, 710),
+      Offset(870, 1040),
     ];
     const torches = [
-      Offset(930, 755),
-      Offset(1210, 755),
-      Offset(930, 885),
-      Offset(1210, 885),
-      Offset(700, 720),
-      Offset(1450, 830),
-    ];
-    const banners = [
-      Offset(970, 665),
-      Offset(1170, 675),
-      Offset(620, 990),
-      Offset(1500, 1030),
+      Offset(800, 590),
+      Offset(1000, 590),
+      Offset(800, 720),
+      Offset(1000, 720),
     ];
 
     for (final tree in trees) {
-      _paintPineTree(canvas, tree);
+      _paintTree(canvas, tree);
     }
-    for (final rock in rocks) {
-      _paintRock(canvas, rock);
+    for (final stone in stones) {
+      _paintStone(canvas, stone);
     }
     for (final torch in torches) {
       _paintTorch(canvas, torch);
     }
-    for (int i = 0; i < banners.length; i++) {
-      _paintBanner(canvas, banners[i], i.isEven ? OperatorPalette.torchOrange : OperatorPalette.hologramBlue);
-    }
   }
 
-  void _paintPineTree(Canvas canvas, Offset base) {
-    final shadow = Paint()..color = Colors.black.withValues(alpha: 0.22);
-    final trunk = Paint()..color = const Color(0xFF5A351E);
-    final leafDark = Paint()..color = const Color(0xFF133D22);
-    final leafLight = Paint()..color = const Color(0xFF2F7B3D);
-
-    canvas.drawOval(Rect.fromCenter(center: base.translate(0, 8), width: 58, height: 22), shadow);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromCenter(center: base.translate(0, -12), width: 13, height: 36), const Radius.circular(4)),
-      trunk,
-    );
-
+  void _paintTree(Canvas canvas, Offset base) {
+    canvas.drawOval(Rect.fromCenter(center: base.translate(0, 10), width: 54, height: 20), Paint()..color = Colors.black.withValues(alpha: 0.18));
+    canvas.drawRect(Rect.fromCenter(center: base.translate(0, -10), width: 10, height: 28), Paint()..color = const Color(0xFF58351E));
     for (int i = 0; i < 3; i++) {
-      final y = base.dy - 22 - i * 24;
-      final halfWidth = 34.0 - i * 5;
-      final canopy = Path()
-        ..moveTo(base.dx, y - 38)
-        ..lineTo(base.dx + halfWidth, y + 8)
-        ..lineTo(base.dx - halfWidth, y + 8)
+      final y = base.dy - 22 - i * 22;
+      final width = 34.0 - i * 5;
+      final path = Path()
+        ..moveTo(base.dx, y - 34)
+        ..lineTo(base.dx + width, y + 7)
+        ..lineTo(base.dx - width, y + 7)
         ..close();
-      canvas.drawPath(canopy, i.isEven ? leafLight : leafDark);
+      canvas.drawPath(path, Paint()..color = i.isEven ? const Color(0xFF2E7D32) : const Color(0xFF14532D));
     }
   }
 
-  void _paintRock(Canvas canvas, Offset base) {
-    final shadow = Paint()..color = Colors.black.withValues(alpha: 0.18);
-    final rockPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFF9CA3AF), Color(0xFF4B5563)],
-      ).createShader(Rect.fromCenter(center: base, width: 72, height: 48));
-    final highlight = Paint()..color = Colors.white.withValues(alpha: 0.18);
-
-    canvas.drawOval(Rect.fromCenter(center: base.translate(0, 14), width: 72, height: 26), shadow);
-    final rock = Path()
-      ..moveTo(base.dx - 32, base.dy + 10)
-      ..lineTo(base.dx - 18, base.dy - 24)
-      ..lineTo(base.dx + 10, base.dy - 32)
-      ..lineTo(base.dx + 36, base.dy - 4)
-      ..lineTo(base.dx + 22, base.dy + 18)
-      ..lineTo(base.dx - 12, base.dy + 24)
+  void _paintStone(Canvas canvas, Offset base) {
+    canvas.drawOval(Rect.fromCenter(center: base.translate(0, 12), width: 58, height: 20), Paint()..color = Colors.black.withValues(alpha: 0.17));
+    final path = Path()
+      ..moveTo(base.dx - 26, base.dy + 9)
+      ..lineTo(base.dx - 12, base.dy - 20)
+      ..lineTo(base.dx + 14, base.dy - 24)
+      ..lineTo(base.dx + 30, base.dy + 2)
+      ..lineTo(base.dx + 16, base.dy + 18)
+      ..lineTo(base.dx - 14, base.dy + 20)
       ..close();
-    canvas.drawPath(rock, rockPaint);
-    canvas.drawCircle(base.translate(-8, -13), 5, highlight);
+    canvas.drawPath(path, Paint()..color = const Color(0xFF6B7280));
+    canvas.drawCircle(base.translate(-6, -9), 4, Paint()..color = Colors.white.withValues(alpha: 0.18));
   }
 
   void _paintTorch(Canvas canvas, Offset base) {
-    final pole = Paint()
-      ..color = const Color(0xFF3A2417)
-      ..strokeWidth = 6
-      ..strokeCap = StrokeCap.round;
-    final flame = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          Colors.white.withValues(alpha: 0.78),
-          OperatorPalette.torchOrange.withValues(alpha: 0.9),
-          Colors.transparent,
-        ],
-      ).createShader(Rect.fromCenter(center: base.translate(0, -34), width: 62, height: 62));
-
-    canvas.drawLine(base, base.translate(0, -34), pole);
-    canvas.drawCircle(base.translate(0, -38), 24, flame);
-    canvas.drawCircle(base.translate(0, -39), 6, Paint()..color = const Color(0xFFFFF2A8));
-  }
-
-  void _paintBanner(Canvas canvas, Offset base, Color color) {
-    final pole = Paint()
-      ..color = const Color(0xFF33251B)
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(base, base.translate(0, -58), pole);
-
-    final flag = Path()
-      ..moveTo(base.dx, base.dy - 58)
-      ..lineTo(base.dx + 42, base.dy - 48)
-      ..lineTo(base.dx + 30, base.dy - 31)
-      ..lineTo(base.dx, base.dy - 38)
-      ..close();
-    canvas.drawPath(flag, Paint()..color = color.withValues(alpha: 0.84));
-    canvas.drawPath(
-      flag,
+    canvas.drawLine(
+      base,
+      base.translate(0, -28),
       Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5
-        ..color = Colors.white.withValues(alpha: 0.25),
+        ..color = const Color(0xFF3A2417)
+        ..strokeWidth = 5
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawCircle(
+      base.translate(0, -32),
+      20,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            Colors.white.withValues(alpha: 0.80),
+            OperatorPalette.torchOrange.withValues(alpha: 0.86),
+            Colors.transparent,
+          ],
+        ).createShader(Rect.fromCenter(center: base.translate(0, -32), width: 46, height: 46)),
     );
   }
 
-  void _paintWalls(Canvas canvas, Path top) {
+  void _paintWall(Canvas canvas, Path top) {
     canvas.drawPath(
       top,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 26
         ..strokeJoin = StrokeJoin.round
-        ..color = const Color(0xFF2E2F28).withValues(alpha: 0.92),
+        ..strokeWidth = 24
+        ..color = const Color(0xFF2F332C),
     );
     canvas.drawPath(
       top,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 10
         ..strokeJoin = StrokeJoin.round
-        ..color = const Color(0xFFD0B36A).withValues(alpha: 0.5),
-    );
-  }
-
-  void _paintCornerTowers(Canvas canvas) {
-    final corners = [
-      Offset(_mapCenter.dx, _mapCenter.dy - _mapRadiusY),
-      Offset(_mapCenter.dx + _mapRadiusX, _mapCenter.dy),
-      Offset(_mapCenter.dx, _mapCenter.dy + _mapRadiusY),
-      Offset(_mapCenter.dx - _mapRadiusX, _mapCenter.dy),
-    ];
-
-    for (final corner in corners) {
-      _paintCornerTower(canvas, corner);
-    }
-  }
-
-  void _paintCornerTower(Canvas canvas, Offset base) {
-    final shadow = Paint()..color = Colors.black.withValues(alpha: 0.26);
-    final side = Paint()..color = const Color(0xFF22251F);
-    final face = Paint()..color = const Color(0xFF34382D);
-    final trim = Paint()..color = const Color(0xFFD0B36A).withValues(alpha: 0.56);
-
-    canvas.drawOval(Rect.fromCenter(center: base.translate(0, 26), width: 88, height: 34), shadow);
-
-    final body = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: base.translate(0, -8), width: 54, height: 72),
-      const Radius.circular(10),
-    );
-    canvas.drawRRect(body, face);
-
-    final rightFace = Path()
-      ..moveTo(base.dx + 27, base.dy - 42)
-      ..lineTo(base.dx + 43, base.dy - 28)
-      ..lineTo(base.dx + 43, base.dy + 20)
-      ..lineTo(base.dx + 27, base.dy + 28)
-      ..close();
-    canvas.drawPath(rightFace, side);
-
-    final roof = Path()
-      ..moveTo(base.dx, base.dy - 72)
-      ..lineTo(base.dx + 42, base.dy - 42)
-      ..lineTo(base.dx, base.dy - 24)
-      ..lineTo(base.dx - 42, base.dy - 42)
-      ..close();
-    canvas.drawPath(roof, Paint()..color = const Color(0xFF5A3321));
-    canvas.drawPath(
-      roof,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
-        ..color = trim.color,
+        ..strokeWidth = 7
+        ..color = OperatorPalette.parchmentGold.withValues(alpha: 0.48),
     );
   }
 
@@ -935,5 +755,43 @@ class _CompoundTerrainPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _CompoundTerrainPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _CompoundMapPainter oldDelegate) => false;
+}
+
+class _CompoundAtmospherePainter extends CustomPainter {
+  final double progress;
+
+  const _CompoundAtmospherePainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final haze = Paint()
+      ..shader = RadialGradient(
+        center: Alignment(0.2 + math.sin(progress * math.pi * 2) * 0.08, -0.35),
+        radius: 1.1,
+        colors: [
+          OperatorPalette.torchOrange.withValues(alpha: 0.06),
+          OperatorPalette.hologramBlue.withValues(alpha: 0.018),
+          Colors.transparent,
+        ],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, haze);
+
+    final spark = Paint()..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    for (int i = 0; i < 10; i++) {
+      final phase = (progress + i * 0.11) % 1.0;
+      final x = size.width * (((i * 23) % 100) / 100) + math.sin(progress * math.pi * 2 + i) * 16;
+      final y = size.height * (0.9 - phase * 0.75);
+      final pulse = math.sin(progress * math.pi * 2 + i).abs();
+      spark.color = (i.isEven ? OperatorPalette.torchOrange : OperatorPalette.hologramBlue)
+          .withValues(alpha: 0.10 + pulse * 0.18);
+      canvas.drawCircle(Offset(x, y), 2.0 + pulse * 2.6, spark);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CompoundAtmospherePainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
 }

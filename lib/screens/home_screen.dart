@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:operator_os/core/operator_style.dart';
 import 'package:operator_os/providers/auth_provider.dart';
 import 'package:operator_os/providers/roadmap_provider.dart';
 import 'package:operator_os/providers/user_initializer.dart';
-import 'package:operator_os/screens/compound_screen.dart';
-import 'package:operator_os/screens/journal_screen.dart';
 import 'package:operator_os/screens/ai_hub_screen.dart';
-import 'package:operator_os/screens/roadmap_screen.dart';
-import 'package:operator_os/screens/sleep_log_screen.dart';
+import 'package:operator_os/screens/compound_screen.dart';
+import 'package:operator_os/screens/sign_in_screen.dart';
 import 'package:operator_os/screens/today_screen.dart';
 import 'package:operator_os/services/notification_service.dart';
 
@@ -48,47 +47,55 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.watch(userInitializerProvider);
     ref.watch(roadmapInitializerProvider);
 
-    final pages = [
-      const TodayScreen(),
-      const CompoundScreen(),
-      const JournalScreen(),
-      const SleepLogScreen(),
-      const RoadmapScreen(),
-      const AiHubScreen(),
+    ref.listen<String?>(currentUserIdProvider, (previous, next) {
+      if (previous != null && next == null && mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute<void>(builder: (_) => const SignInScreen()),
+          (_) => false,
+        );
+      }
+    });
+
+    final pages = const [
+      TodayScreen(),
+      CompoundScreen(),
+      AiHubScreen(),
     ];
 
     return Scaffold(
-      body: pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.today),
-            label: 'Today',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: 'Compound',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.book),
-            label: 'Journal',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bedtime),
-            label: 'Sleep',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Roadmap',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.psychology),
-            label: 'AI',
-          ),
-        ],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: pages,
+      ),
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: OperatorPalette.voidBlack.withValues(alpha: 0.96),
+          border: const Border(top: BorderSide(color: OperatorPalette.borderDim)),
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (index) => setState(() => _currentIndex = index),
+          backgroundColor: Colors.transparent,
+          indicatorColor: OperatorPalette.parchmentGold.withValues(alpha: 0.16),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard),
+              label: 'Command',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.castle_outlined),
+              selectedIcon: Icon(Icons.castle),
+              label: 'Compound',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.psychology_alt_outlined),
+              selectedIcon: Icon(Icons.psychology_alt),
+              label: 'AI',
+            ),
+          ],
+        ),
       ),
     );
   }

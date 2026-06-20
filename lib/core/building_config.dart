@@ -17,38 +17,35 @@ class BuildingConfig {
     return statColors[statKey] ?? Colors.grey;
   }
 
-  /// Compound world dimensions. These are intentionally larger than the
-  /// visible viewport so the InteractiveViewer can behave like a CoC-style
-  /// camera over a real map rather than a flat fitted card.
-  static const double worldWidth = 2200;
-  static const double worldHeight = 1700;
+  /// Stable CoC-style 2.5D world canvas. Kept intentionally modest so it
+  /// renders reliably on phones and does not feel like a broken giant board.
+  static const double worldWidth = 1800;
+  static const double worldHeight = 1300;
 
-  /// Building widgets are rendered as free-standing sprites, not clipped card
-  /// thumbnails. The anchor point is the sprite's isometric base/feet.
-  static const double buildingSpriteWidth = 240;
-  static const double buildingSpriteHeight = 276;
-  static const double buildingAnchorYOffset = 212;
+  /// Tall isometric sprite box. Positions below are base anchors, not top-lefts.
+  static const double buildingSpriteWidth = 220;
+  static const double buildingSpriteHeight = 254;
+  static const double buildingAnchorYOffset = 196;
 
-  /// Fixed village layout for the 8 buildings inside the compound world.
+  /// Fixed village layout for the 8 stat buildings.
   ///
-  /// These offsets are isometric base anchors, not top-left corners. Rendering
-  /// code subtracts [buildingSpriteWidth] / 2 and [buildingAnchorYOffset] so
-  /// tall sprites can rise upward without being clipped.
+  /// Each offset is the visual base/feet of the building. The renderer subtracts
+  /// half sprite width and [buildingAnchorYOffset] so sprites rise upward like a
+  /// real isometric game object instead of being cropped cards.
   static const Map<String, Offset> buildingPositions = {
-    'forge': Offset(760, 620),
-    'academy': Offset(1100, 460),
-    'leverage': Offset(1440, 650),
-    'presence': Offset(600, 880),
-    'craft': Offset(1070, 820),
-    'vitality': Offset(1520, 920),
-    'capital': Offset(860, 1160),
-    'clarity': Offset(1260, 1180),
+    'forge': Offset(650, 390),
+    'academy': Offset(900, 500),
+    'leverage': Offset(1160, 500),
+    'presence': Offset(560, 700),
+    'craft': Offset(900, 650),
+    'vitality': Offset(1240, 710),
+    'capital': Offset(760, 910),
+    'clarity': Offset(1040, 930),
   };
 
-  /// Pace ghosts sit slightly north-east of the real building, matching the
-  /// screen-space direction of the isometric terrain grid.
-  static const double ghostOffsetX = 86;
-  static const double ghostOffsetY = -42;
+  /// Pace ghosts sit north-east on the isometric grid.
+  static const double ghostOffsetX = 72;
+  static const double ghostOffsetY = -34;
 
   static Offset ghostAnchorFor(Offset anchor) {
     return Offset(anchor.dx + ghostOffsetX, anchor.dy + ghostOffsetY);

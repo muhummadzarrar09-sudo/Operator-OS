@@ -1,4 +1,5 @@
 $ProjectDir = "D:\00000. Operator OS\operator_os"
+$OutputApkName = "Operator OS.apk"
 
 $env:JAVA_HOME    = "C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot"
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
@@ -37,11 +38,13 @@ flutter build apk --release
 if ($LASTEXITCODE -ne 0) { Write-Host "build FAILED" -ForegroundColor Red; exit 1 }
 
 $apk = Join-Path $ProjectDir "build\app\outputs\flutter-apk\app-release.apk"
-Write-Host "[4/4] Checking output..." -ForegroundColor Cyan
+$namedApk = Join-Path (Split-Path $apk) $OutputApkName
+Write-Host "[4/4] Naming output APK..." -ForegroundColor Cyan
 if (Test-Path $apk) {
-    $size = [math]::Round((Get-Item $apk).Length / 1MB, 1)
-    Write-Host "SUCCESS -> $apk ($size MB)" -ForegroundColor Green
-    Start-Process explorer.exe (Split-Path $apk)
+    Copy-Item $apk $namedApk -Force
+    $size = [math]::Round((Get-Item $namedApk).Length / 1MB, 1)
+    Write-Host "SUCCESS -> $namedApk ($size MB)" -ForegroundColor Green
+    Start-Process explorer.exe (Split-Path $namedApk)
 } else {
     Write-Host "APK not found. Paste the error above." -ForegroundColor Red
 }

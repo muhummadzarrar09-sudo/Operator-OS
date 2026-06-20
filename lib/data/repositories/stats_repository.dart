@@ -17,15 +17,21 @@ class StatsRepository {
 
   StatsRepository(this._db);
 
-  /// Seeds all 8 stats at level 1 / 0 XP for a given user if they don't exist.
+  /// Ensures all 8 stats exist at level 1 / 0 XP for a given user.
+  ///
+  /// This deliberately fills missing rows even if the user already has some
+  /// stats. That keeps the Compound stable after auth switches, partial syncs,
+  /// or old local databases that were created before every stat existed.
   Future<void> ensureStatsSeeded(String userId) async {
     final existing = await (_db.select(_db.statsTable)
           ..where((s) => s.userId.equals(userId)))
         .get();
-    if (existing.isNotEmpty) return;
+    final existingKeys = existing.map((stat) => stat.statKey).toSet();
+    final missingKeys = StatKey.values.where((key) => !existingKeys.contains(key.name));
+    if (missingKeys.isEmpty) return;
 
     final now = DateTime.now().millisecondsSinceEpoch;
-    for (final key in StatKey.values) {
+    for (final key in missingKeys) {
       await _db.into(_db.statsTable).insert(
             StatsTableCompanion(
               id: Value(Uuid().v4()),
