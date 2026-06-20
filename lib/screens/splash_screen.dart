@@ -30,9 +30,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _init() async {
+    // Restore offline/local mode, but never let it block the splash from
+    // advancing. A throw or a stall in SharedPreferences here must not freeze
+    // the loading screen at 100% — bound it with a timeout and swallow errors
+    // so navigation always happens once the intro animation finishes.
+    final restoreLocalMode = ref
+        .read(authProvider.notifier)
+        .restoreLocalMode()
+        .timeout(const Duration(seconds: 3))
+        .catchError((Object e) {
+      debugPrint('Splash: restoreLocalMode failed/timed out (ignored): $e');
+    });
+
+    // Run the restore concurrently with the intro animation, then advance.
     await Future.wait<void>([
       Future<void>.delayed(_introDuration),
-      ref.read(authProvider.notifier).restoreLocalMode(),
+      restoreLocalMode,
     ]);
 
     if (!mounted) return;
@@ -50,6 +63,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         ? const HomeScreen()
         : const SignInScreen();
 
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
         transitionDuration: const Duration(milliseconds: 520),

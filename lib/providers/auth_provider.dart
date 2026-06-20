@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show StateProvider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,7 +11,15 @@ const String _localModePrefsKey = 'operator_os_local_mode_enabled';
 /// Manual state used for the personal/offline mode. Supabase is still supported,
 /// but this lets the app boot and keep local Drift data even when Supabase auth
 /// is not configured or you just want the app for yourself.
-final localUserIdProvider = StateProvider<String?>((ref) => null);
+@riverpod
+class LocalUserId extends _$LocalUserId {
+  @override
+  String? build() => null;
+
+  void setUserId(String? userId) {
+    state = userId;
+  }
+}
 
 @riverpod
 class AuthNotifier extends _$AuthNotifier {
@@ -28,13 +35,15 @@ class AuthNotifier extends _$AuthNotifier {
   Future<void> restoreLocalMode() async {
     final prefs = await SharedPreferences.getInstance();
     final enabled = prefs.getBool(_localModePrefsKey) ?? false;
-    ref.read(localUserIdProvider.notifier).state = enabled ? localOperatorUserId : null;
+    ref.read(localUserIdProvider.notifier).setUserId(
+          enabled ? localOperatorUserId : null,
+        );
   }
 
   Future<void> signInLocal() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_localModePrefsKey, true);
-    ref.read(localUserIdProvider.notifier).state = localOperatorUserId;
+    ref.read(localUserIdProvider.notifier).setUserId(localOperatorUserId);
   }
 
   Future<void> signInWithGoogle() async {
@@ -70,7 +79,7 @@ class AuthNotifier extends _$AuthNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_localModePrefsKey);
-      ref.read(localUserIdProvider.notifier).state = null;
+      ref.read(localUserIdProvider.notifier).setUserId(null);
       await Supabase.instance.client.auth.signOut();
     } catch (e) {
       debugPrint('Sign-out error (ignored): $e');
