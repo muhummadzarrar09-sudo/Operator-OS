@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:operator_os/core/operator_style.dart';
 import 'package:operator_os/providers/ai_providers.dart';
 import 'package:operator_os/providers/ai_service_provider.dart';
 import 'package:operator_os/providers/auth_provider.dart';
+import 'package:operator_os/utils/sign_out_redirect.dart';
 import 'package:operator_os/screens/future_self_chat_screen.dart';
 import 'package:operator_os/screens/weekly_insights_screen.dart';
 import 'package:operator_os/services/ai_service.dart';
+import 'package:operator_os/widgets/operator_card.dart';
 
 class AiHubScreen extends ConsumerStatefulWidget {
   const AiHubScreen({super.key});
@@ -51,60 +54,66 @@ class _AiHubScreenState extends ConsumerState<AiHubScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authProvider.notifier).signOut(),
+            onPressed: () => signOutAndReturnToLogin(context, ref),
           ),
         ],
       ),
-      body: Padding(
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _AiStatusCard(ai: ai),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _indexing ? null : _indexData,
-              icon: _indexing
-                  ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.refresh),
-              label: const Text('Index Data for AI'),
-            ),
-            if (_status.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                _status,
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-            ],
-            const SizedBox(height: 24),
-            const Text(
-              'Features',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            _FeatureCard(
-              icon: Icons.insights,
-              title: 'Weekly Insights',
-              subtitle: 'AI-generated recap of your week.',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const WeeklyInsightsScreen()),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _FeatureCard(
-              icon: Icons.chat_bubble_outline,
-              title: 'Future Self Chat',
-              subtitle: 'Ask your future self anything.',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const FutureSelfChatScreen()),
-              ),
+        children: [
+          _AiStatusCard(ai: ai),
+          const SizedBox(height: 16),
+          const OperatorCard(
+            label: 'AI SAFETY',
+            title: 'Treat outputs as drafts, not truth.',
+            body:
+                'AI summaries and chats can be wrong, incomplete, or biased. Do not enter secrets, passwords, medical records, payment data, or legal/financially sensitive info. Verify anything important before acting.',
+            icon: Icons.warning_amber_outlined,
+            accentColor: OperatorPalette.warningAmber,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _indexing ? null : _indexData,
+            icon: _indexing
+                ? const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh),
+            label: const Text('Index Data for AI'),
+          ),
+          if (_status.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              _status,
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
             ),
           ],
-        ),
+          const SizedBox(height: 24),
+          const Text(
+            'Features',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _FeatureCard(
+            icon: Icons.insights,
+            title: 'Weekly Insights',
+            subtitle: 'AI-generated recap of your week.',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const WeeklyInsightsScreen()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _FeatureCard(
+            icon: Icons.chat_bubble_outline,
+            title: 'Future Self Chat',
+            subtitle: 'Ask your future self anything.',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const FutureSelfChatScreen()),
+            ),
+          ),
+        ],
       ),
     );
   }

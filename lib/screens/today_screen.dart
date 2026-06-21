@@ -4,6 +4,7 @@ import 'package:operator_os/core/operator_style.dart';
 import 'package:operator_os/data/database.dart';
 import 'package:operator_os/data/repositories/quests_repository.dart';
 import 'package:operator_os/providers/auth_provider.dart';
+import 'package:operator_os/utils/sign_out_redirect.dart';
 import 'package:operator_os/providers/quests_provider.dart';
 import 'package:operator_os/providers/stats_provider.dart';
 import 'package:operator_os/screens/campaign_season_screen.dart';
@@ -30,7 +31,7 @@ class TodayScreen extends ConsumerWidget {
           IconButton(
             tooltip: 'Sign out',
             icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authProvider.notifier).signOut(),
+            onPressed: () => signOutAndReturnToLogin(context, ref),
           ),
         ],
       ),

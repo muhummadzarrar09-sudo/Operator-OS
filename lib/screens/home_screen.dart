@@ -6,6 +6,7 @@ import 'package:operator_os/providers/roadmap_provider.dart';
 import 'package:operator_os/providers/user_initializer.dart';
 import 'package:operator_os/screens/ai_hub_screen.dart';
 import 'package:operator_os/screens/compound_screen.dart';
+import 'package:operator_os/screens/settings_screen.dart';
 import 'package:operator_os/screens/sign_in_screen.dart';
 import 'package:operator_os/screens/today_screen.dart';
 import 'package:operator_os/services/notification_service.dart';
@@ -47,12 +48,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.watch(userInitializerProvider);
     ref.watch(roadmapInitializerProvider);
 
-    ref.listen<String?>(currentUserIdProvider, (previous, next) {
-      if (previous != null && next == null && mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute<void>(builder: (_) => const SignInScreen()),
-          (_) => false,
-        );
+    ref.listen<String?>(currentUserIdProvider, (_, next) {
+      if (next == null && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+            MaterialPageRoute<void>(builder: (_) => const SignInScreen()),
+            (_) => false,
+          );
+        });
       }
     });
 
@@ -60,6 +64,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       TodayScreen(),
       CompoundScreen(),
       AiHubScreen(),
+      SettingsScreen(),
     ];
 
     return Scaffold(
@@ -93,6 +98,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               icon: Icon(Icons.psychology_alt_outlined),
               selectedIcon: Icon(Icons.psychology_alt),
               label: 'AI',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings),
+              label: 'Settings',
             ),
           ],
         ),

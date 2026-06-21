@@ -1,7 +1,5 @@
-# Suppress warnings for optional classes referenced reflectively by
-# mediapipe (flutter_gemma) and okhttp's optional TLS providers.
--dontwarn com.google.mediapipe.proto.CalculatorProfileProto$CalculatorProfile
--dontwarn com.google.mediapipe.proto.GraphTemplateProto$CalculatorGraphTemplate
+# Suppress warnings for optional TLS/security provider classes referenced
+# reflectively by networking stacks. These providers are optional on Android.
 -dontwarn org.bouncycastle.jsse.BCSSLParameters
 -dontwarn org.bouncycastle.jsse.BCSSLSocket
 -dontwarn org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
@@ -11,7 +9,3 @@
 -dontwarn org.openjsse.javax.net.ssl.SSLParameters
 -dontwarn org.openjsse.javax.net.ssl.SSLSocket
 -dontwarn org.openjsse.net.ssl.OpenJSSE
-
-# Keep mediapipe / tflite classes used by flutter_gemma.
--keep class com.google.mediapipe.** { *; }
--keep class org.tensorflow.** { *; }

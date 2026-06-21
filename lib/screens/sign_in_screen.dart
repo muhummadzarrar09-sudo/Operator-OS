@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:operator_os/core/operator_style.dart';
 import 'package:operator_os/providers/auth_provider.dart';
 import 'package:operator_os/screens/home_screen.dart';
+import 'package:operator_os/screens/legal_screen.dart';
+import 'package:operator_os/screens/onboarding_screen.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
@@ -19,6 +21,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
   late final AnimationController _ambientController;
   bool _isSending = false;
   bool _isLaunchingLocal = false;
+  bool _didNavigateAfterAuth = false;
+  bool _acceptedLegal = false;
+  bool _loadedLegalAcceptance = false;
 
   @override
   void initState() {
@@ -27,6 +32,33 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
       vsync: this,
       duration: const Duration(seconds: 12),
     )..repeat();
+    _loadLegalAcceptance();
+  }
+
+  Future<void> _loadLegalAcceptance() async {
+    final accepted = await hasAcceptedOperatorLegalTerms();
+    if (!mounted) return;
+    setState(() {
+      _acceptedLegal = accepted;
+      _loadedLegalAcceptance = true;
+    });
+  }
+
+  Future<void> _setAcceptedLegal(bool value) async {
+    await setOperatorLegalAccepted(value);
+    if (!mounted) return;
+    setState(() {
+      _acceptedLegal = value;
+      _loadedLegalAcceptance = true;
+    });
+  }
+
+  bool _ensureLegalAccepted() {
+    if (_acceptedLegal) return true;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please accept the Privacy Policy and Terms first.')),
+    );
+    return false;
   }
 
   @override
@@ -37,6 +69,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
   }
 
   Future<void> _continueLocal() async {
+    if (!_ensureLegalAccepted()) return;
     setState(() => _isLaunchingLocal = true);
     try {
       await ref.read(authProvider.notifier).signInLocal();
@@ -52,6 +85,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
   }
 
   Future<void> _sendMagicLink() async {
+    if (!_ensureLegalAccepted()) return;
     final email = _emailController.text.trim();
     if (email.isEmpty) return;
     setState(() => _isSending = true);
@@ -74,6 +108,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
   }
 
   Future<void> _signInWithGoogle() async {
+    if (!_ensureLegalAccepted()) return;
     try {
       await ref.read(authProvider.notifier).signInWithGoogle();
     } catch (e) {
@@ -85,13 +120,33 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
     }
   }
 
+  Future<void> _finishSignIn() async {
+    if (_didNavigateAfterAuth) return;
+    _didNavigateAfterAuth = true;
+
+    final hasSeenWalkthrough = await hasCompletedOperatorOnboarding();
+    if (!mounted) return;
+
+    final destination = hasSeenWalkthrough
+        ? const HomeScreen()
+        : const OnboardingScreen(destination: HomeScreen());
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 520),
+        pageBuilder: (_, animation, __) => FadeTransition(
+          opacity: animation,
+          child: destination,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<String?>(currentUserIdProvider, (previous, next) {
       if (previous == null && next != null && mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
-        );
+        _finishSignIn();
       }
     });
 
@@ -118,6 +173,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
                             emailController: _emailController,
                             isSending: _isSending,
                             isLaunchingLocal: _isLaunchingLocal,
+                            acceptedLegal: _acceptedLegal,
+                            loadedLegalAcceptance: _loadedLegalAcceptance,
+                            onLegalChanged: _setAcceptedLegal,
                             onLocal: _continueLocal,
                             onGoogle: _signInWithGoogle,
                             onMagicLink: _sendMagicLink,
@@ -224,6 +282,9 @@ class _LoginPanel extends StatelessWidget {
   final TextEditingController emailController;
   final bool isSending;
   final bool isLaunchingLocal;
+  final bool acceptedLegal;
+  final bool loadedLegalAcceptance;
+  final ValueChanged<bool> onLegalChanged;
   final VoidCallback onLocal;
   final VoidCallback onGoogle;
   final VoidCallback onMagicLink;
@@ -232,6 +293,9 @@ class _LoginPanel extends StatelessWidget {
     required this.emailController,
     required this.isSending,
     required this.isLaunchingLocal,
+    required this.acceptedLegal,
+    required this.loadedLegalAcceptance,
+    required this.onLegalChanged,
     required this.onLocal,
     required this.onGoogle,
     required this.onMagicLink,
@@ -266,8 +330,14 @@ class _LoginPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _LegalAcceptanceBox(
+              accepted: acceptedLegal,
+              enabled: loadedLegalAcceptance,
+              onChanged: onLegalChanged,
+            ),
+            const SizedBox(height: 14),
             FilledButton.icon(
-              onPressed: isLaunchingLocal ? null : onLocal,
+              onPressed: loadedLegalAcceptance && acceptedLegal && !isLaunchingLocal ? onLocal : null,
               icon: isLaunchingLocal
                   ? const SizedBox(
                       width: 18,
@@ -285,7 +355,7 @@ class _LoginPanel extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             OutlinedButton.icon(
-              onPressed: onGoogle,
+              onPressed: loadedLegalAcceptance && acceptedLegal ? onGoogle : null,
               icon: const Icon(Icons.login),
               label: const Text('Sign in with Google'),
             ),
@@ -313,7 +383,7 @@ class _LoginPanel extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             ElevatedButton(
-              onPressed: isSending ? null : onMagicLink,
+              onPressed: loadedLegalAcceptance && acceptedLegal && !isSending ? onMagicLink : null,
               child: isSending
                   ? const SizedBox(
                       height: 16,
@@ -324,6 +394,82 @@ class _LoginPanel extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _LegalAcceptanceBox extends StatelessWidget {
+  final bool accepted;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  const _LegalAcceptanceBox({
+    required this.accepted,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: OperatorPalette.voidBlack.withValues(alpha: 0.34),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: accepted
+              ? OperatorPalette.successGreen.withValues(alpha: 0.32)
+              : OperatorPalette.warningAmber.withValues(alpha: 0.30),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Checkbox(
+                value: accepted,
+                onChanged: enabled ? (value) => onChanged(value ?? false) : null,
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    'I am 13+ and I agree to the Privacy Policy, Terms & Safety Notes, and local/optional sync data handling.',
+                    style: OperatorTextStyles.muted.copyWith(
+                      color: OperatorPalette.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const PrivacyPolicyScreen()),
+                ),
+                child: const Text('Privacy'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const TermsOfUseScreen()),
+                ),
+                child: const Text('Terms'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const DataSafetyScreen()),
+                ),
+                child: const Text('Data Safety'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

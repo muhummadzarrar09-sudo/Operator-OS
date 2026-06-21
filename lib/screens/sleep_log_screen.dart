@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:operator_os/data/database.dart';
 import 'package:operator_os/data/repositories/sleep_repository.dart';
 import 'package:operator_os/providers/auth_provider.dart';
+import 'package:operator_os/utils/sign_out_redirect.dart';
 import 'package:operator_os/providers/sleep_provider.dart';
 
 class SleepLogScreen extends ConsumerStatefulWidget {
@@ -30,7 +31,7 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authProvider.notifier).signOut(),
+            onPressed: () => signOutAndReturnToLogin(context, ref),
           ),
         ],
       ),

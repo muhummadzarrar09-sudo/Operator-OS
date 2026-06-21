@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:operator_os/data/repositories/boss_repository.dart';
 import 'package:operator_os/data/repositories/quests_repository.dart';
 import 'package:operator_os/providers/auth_provider.dart';
+import 'package:operator_os/utils/sign_out_redirect.dart';
 
 class BossDayScreen extends ConsumerStatefulWidget {
   final DateTime date;
@@ -83,7 +84,7 @@ class _BossDayScreenState extends ConsumerState<BossDayScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authProvider.notifier).signOut(),
+            onPressed: () => signOutAndReturnToLogin(context, ref),
           ),
         ],
       ),

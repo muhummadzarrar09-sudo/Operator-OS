@@ -5,6 +5,7 @@ import 'package:operator_os/core/constants.dart';
 import 'package:operator_os/data/database.dart';
 import 'package:operator_os/data/repositories/journal_repository.dart';
 import 'package:operator_os/providers/auth_provider.dart';
+import 'package:operator_os/utils/sign_out_redirect.dart';
 import 'package:operator_os/providers/journal_provider.dart';
 
 class JournalScreen extends ConsumerStatefulWidget {
@@ -81,7 +82,7 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authProvider.notifier).signOut(),
+            onPressed: () => signOutAndReturnToLogin(context, ref),
           ),
         ],
       ),

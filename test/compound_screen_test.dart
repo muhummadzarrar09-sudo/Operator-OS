@@ -69,20 +69,16 @@ void main() {
     });
   });
 
-  testWidgets('CompoundScreen FAB +500 XP on CRAFT bumps tier 1→2',
+  testWidgets('CompoundScreen updates CRAFT tier after repository XP award',
       (tester) async {
     await tester.runAsync(() async {
       final db = AppDatabase.custom(NativeDatabase.memory());
       addTearDown(db.close);
-      await StatsRepository(db).ensureStatsSeeded('test-user');
+      final statsRepo = StatsRepository(db);
+      await statsRepo.ensureStatsSeeded('test-user');
       await tester.pumpWidget(buildApp(db));
       await pumpForStreams(tester);
-      await tester.tap(find.byType(FloatingActionButton));
-      await pumpForStreams(tester);
-      final plus500 = find.descendant(of: find.widgetWithText(ListTile, 'Craft'), matching: find.text('+500'));
-      await tester.tap(plus500);
-      await pumpForStreams(tester);
-      await tester.tap(find.text('Close'));
+      await statsRepo.addXp('test-user', 'craft', 500);
       await pumpForStreams(tester);
       final craftWidget = tester.widget<BuildingWidget>(
         find.byWidgetPredicate((w) => w is BuildingWidget && !w.isGhost && w.statKey == 'craft'),

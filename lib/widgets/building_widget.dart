@@ -59,11 +59,15 @@ class _BuildingWidgetState extends State<BuildingWidget> {
             alignment: Alignment.bottomCenter,
             children: [
               Positioned(
-                bottom: 42,
+                bottom: 58,
+                child: _SpriteGlow(color: color, isGhost: widget.isGhost),
+              ),
+              Positioned(
+                bottom: 44,
                 child: _GroundShadow(color: color, isGhost: widget.isGhost),
               ),
               Positioned.fill(
-                bottom: 34,
+                bottom: 38,
                 child: _BuildingSprite(
                   statKey: widget.statKey,
                   tier: widget.tier,
@@ -72,13 +76,17 @@ class _BuildingWidgetState extends State<BuildingWidget> {
                 ),
               ),
               Positioned(
-                left: 34,
-                right: 34,
-                bottom: 4,
+                top: 44,
+                left: 46,
+                child: _TierBadge(tier: widget.tier, color: color, isGhost: widget.isGhost),
+              ),
+              Positioned(
+                left: 42,
+                right: 42,
+                bottom: 2,
                 child: _BuildingPlate(
                   statKey: widget.statKey,
                   level: widget.level,
-                  tier: widget.tier,
                   progress: progress,
                   color: color,
                   isGhost: widget.isGhost,
@@ -86,8 +94,8 @@ class _BuildingWidgetState extends State<BuildingWidget> {
               ),
               if (widget.hasPendingQuests && !widget.isGhost)
                 Positioned(
-                  top: 36,
-                  right: 42,
+                  top: 38,
+                  right: 44,
                   child: _QuestBeacon(color: color),
                 ),
             ],
@@ -228,6 +236,70 @@ class _BuildingSprite extends StatelessWidget {
   }
 }
 
+class _SpriteGlow extends StatelessWidget {
+  final Color color;
+  final bool isGhost;
+
+  const _SpriteGlow({required this.color, required this.isGhost});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 178,
+      height: 178,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [
+            color.withValues(alpha: isGhost ? 0.06 : 0.18),
+            color.withValues(alpha: isGhost ? 0.025 : 0.075),
+            Colors.transparent,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TierBadge extends StatelessWidget {
+  final int tier;
+  final Color color;
+  final bool isGhost;
+
+  const _TierBadge({required this.tier, required this.color, required this.isGhost});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: isGhost ? 0.42 : 0.72),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: isGhost ? 0.28 : 0.75)),
+        boxShadow: [
+          if (!isGhost)
+            BoxShadow(
+              color: color.withValues(alpha: 0.20),
+              blurRadius: 12,
+              spreadRadius: 1,
+            ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Text(
+          'T$tier',
+          style: TextStyle(
+            color: isGhost ? Colors.white70 : color,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _GroundShadow extends StatelessWidget {
   final Color color;
   final bool isGhost;
@@ -237,8 +309,8 @@ class _GroundShadow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 150,
-      height: 42,
+      width: 178,
+      height: 48,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
         gradient: RadialGradient(
@@ -256,7 +328,6 @@ class _GroundShadow extends StatelessWidget {
 class _BuildingPlate extends StatelessWidget {
   final String statKey;
   final int level;
-  final int tier;
   final double progress;
   final Color color;
   final bool isGhost;
@@ -264,7 +335,6 @@ class _BuildingPlate extends StatelessWidget {
   const _BuildingPlate({
     required this.statKey,
     required this.level,
-    required this.tier,
     required this.progress,
     required this.color,
     required this.isGhost,
@@ -273,67 +343,79 @@ class _BuildingPlate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final alpha = isGhost ? 0.58 : 0.92;
+    final levelLabel = isGhost ? 'PACE' : 'Lv$level';
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: alpha),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withValues(alpha: isGhost ? 0.34 : 0.78),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isGhost ? 0.12 : 0.26),
-            blurRadius: 12,
-            offset: const Offset(0, 7),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 164),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: alpha),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: color.withValues(alpha: isGhost ? 0.34 : 0.78),
+            width: 1.2,
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    statKey.toUpperCase(),
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: isGhost ? Colors.white70 : Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.7,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  isGhost ? 'PACE T$tier' : 'Lv$level T$tier',
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 5),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: isGhost ? 1 : progress,
-                minHeight: 5,
-                backgroundColor: Colors.white.withValues(alpha: 0.14),
-                valueColor: AlwaysStoppedAnimation(
-                  isGhost ? Colors.white.withValues(alpha: 0.48) : color,
-                ),
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isGhost ? 0.12 : 0.26),
+              blurRadius: 12,
+              offset: const Offset(0, 7),
             ),
           ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      statKey.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isGhost ? Colors.white70 : Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.7,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  SizedBox(
+                    width: isGhost ? 42 : 34,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        levelLabel,
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 5),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: isGhost ? 1 : progress,
+                  minHeight: 5,
+                  backgroundColor: Colors.white.withValues(alpha: 0.14),
+                  valueColor: AlwaysStoppedAnimation(
+                    isGhost ? Colors.white.withValues(alpha: 0.48) : color,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

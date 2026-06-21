@@ -1,14 +1,11 @@
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:operator_os/core/building_config.dart';
 import 'package:operator_os/core/constants.dart';
 import 'package:operator_os/core/operator_style.dart';
 import 'package:operator_os/data/database.dart';
-import 'package:operator_os/data/repositories/stats_repository.dart';
-import 'package:operator_os/providers/auth_provider.dart';
 import 'package:operator_os/providers/install_date_provider.dart';
 import 'package:operator_os/providers/quests_provider.dart';
 import 'package:operator_os/providers/stats_provider.dart';
@@ -43,57 +40,7 @@ class CompoundScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Stats error: $err')),
       ),
-      floatingActionButton: kDebugMode
-          ? FloatingActionButton(
-              onPressed: () => _showDebugXpDialog(context, ref),
-              child: const Icon(Icons.bug_report),
-            )
-          : null,
     );
-  }
-
-  void _showDebugXpDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Debug: Add XP'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: StatKey.values.map((key) {
-              return ListTile(
-                title: Text(key.label),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextButton(
-                      onPressed: () => _addXp(ref, key.name, 500),
-                      child: const Text('+500'),
-                    ),
-                    TextButton(
-                      onPressed: () => _addXp(ref, key.name, 2000),
-                      child: const Text('+2K'),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _addXp(WidgetRef ref, String statKey, int xp) {
-    final userId = ref.read(currentUserIdProvider);
-    if (userId == null) return;
-    ref.read(statsRepositoryProvider).addXp(userId, statKey, xp);
   }
 }
 
@@ -178,9 +125,11 @@ class _CompoundViewState extends ConsumerState<_CompoundView>
   }
 
   double _initialScaleFor(Size viewport) {
-    final widthScale = viewport.width / (BuildingConfig.worldWidth * 0.82);
-    final heightScale = viewport.height / (BuildingConfig.worldHeight * 0.78);
-    return math.min(widthScale, heightScale).clamp(0.38, 0.78).toDouble();
+    // The base map is a square rendered asset. Use an aggressive opening scale
+    // so the island feels like a game map, not a tiny board in empty space.
+    final widthScale = viewport.width / (BuildingConfig.worldWidth * 0.70);
+    final heightScale = viewport.height / (BuildingConfig.worldHeight * 0.74);
+    return math.max(widthScale, heightScale).clamp(0.52, 0.90).toDouble();
   }
 
   Offset _computeCentroid() {
@@ -248,7 +197,7 @@ class _CompoundViewState extends ConsumerState<_CompoundView>
                     children: [
                       const Positioned.fill(
                         child: RepaintBoundary(
-                          child: CustomPaint(painter: _CompoundMapPainter()),
+                          child: _CompoundBaseMap(),
                         ),
                       ),
                       ...entities.map(
@@ -438,6 +387,21 @@ class _CompoundBackdrop extends StatelessWidget {
   }
 }
 
+class _CompoundBaseMap extends StatelessWidget {
+  const _CompoundBaseMap();
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/compound/compound_base.png',
+      width: BuildingConfig.worldWidth,
+      height: BuildingConfig.worldHeight,
+      fit: BoxFit.fill,
+      filterQuality: FilterQuality.high,
+    );
+  }
+}
+
 class _CameraControls extends StatelessWidget {
   final VoidCallback onZoomOut;
   final VoidCallback onReset;
@@ -508,254 +472,6 @@ class _CameraButton extends StatelessWidget {
       ),
     );
   }
-}
-
-class _CompoundMapPainter extends CustomPainter {
-  static const Offset _center = Offset(BuildingConfig.worldWidth / 2, 650);
-  static const double _radiusX = 730;
-  static const double _radiusY = 430;
-  static const double _drop = 110;
-  static const double _tileW = 104;
-  static const double _tileH = 52;
-
-  const _CompoundMapPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final top = _diamond(_center, _radiusX, _radiusY);
-    final bottom = _diamond(_center.translate(0, _drop), _radiusX, _radiusY);
-
-    _paintShadow(canvas, bottom);
-    _paintSides(canvas);
-    _paintTop(canvas, top);
-
-    canvas.save();
-    canvas.clipPath(top);
-    _paintGrid(canvas, top.getBounds());
-    _paintRoads(canvas);
-    _paintPlaza(canvas);
-    _paintDecor(canvas);
-    canvas.restore();
-
-    _paintWall(canvas, top);
-  }
-
-  void _paintShadow(Canvas canvas, Path bottom) {
-    canvas.drawPath(
-      bottom.shift(const Offset(0, 18)),
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.34)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 26),
-    );
-  }
-
-  void _paintSides(Canvas canvas) {
-    final left = Path()
-      ..moveTo(_center.dx - _radiusX, _center.dy)
-      ..lineTo(_center.dx, _center.dy + _radiusY)
-      ..lineTo(_center.dx, _center.dy + _radiusY + _drop)
-      ..lineTo(_center.dx - _radiusX, _center.dy + _drop)
-      ..close();
-    final right = Path()
-      ..moveTo(_center.dx + _radiusX, _center.dy)
-      ..lineTo(_center.dx, _center.dy + _radiusY)
-      ..lineTo(_center.dx, _center.dy + _radiusY + _drop)
-      ..lineTo(_center.dx + _radiusX, _center.dy + _drop)
-      ..close();
-
-    canvas.drawPath(left, Paint()..color = const Color(0xFF284C27));
-    canvas.drawPath(right, Paint()..color = const Color(0xFF183616));
-  }
-
-  void _paintTop(Canvas canvas, Path top) {
-    final bounds = top.getBounds();
-    canvas.drawPath(
-      top,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF569A46), Color(0xFF2E6B33), Color(0xFF1E4E25)],
-        ).createShader(bounds),
-    );
-  }
-
-  void _paintGrid(Canvas canvas, Rect bounds) {
-    final line = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = Colors.white.withValues(alpha: 0.075);
-    final fillA = Paint()..color = Colors.white.withValues(alpha: 0.018);
-    final fillB = Paint()..color = Colors.black.withValues(alpha: 0.018);
-
-    for (int row = -16; row <= 16; row++) {
-      for (int col = -16; col <= 16; col++) {
-        final tileCenter = Offset(
-          _center.dx + (col - row) * _tileW / 2,
-          _center.dy + (col + row) * _tileH / 2,
-        );
-        final tile = _diamond(tileCenter, _tileW / 2, _tileH / 2);
-        if (!tile.getBounds().overlaps(bounds)) continue;
-        canvas.drawPath(tile, (row + col).isEven ? fillA : fillB);
-        canvas.drawPath(tile, line);
-      }
-    }
-  }
-
-  void _paintRoads(Canvas canvas) {
-    final roadBase = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = 44
-      ..color = const Color(0xFF654B33).withValues(alpha: 0.80);
-    final roadTop = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = 24
-      ..color = const Color(0xFFC09A5D).withValues(alpha: 0.62);
-
-    for (final anchor in BuildingConfig.buildingPositions.values) {
-      final control = Offset((_center.dx + anchor.dx) / 2, (_center.dy + anchor.dy) / 2 - 24);
-      final path = Path()
-        ..moveTo(_center.dx, _center.dy)
-        ..quadraticBezierTo(control.dx, control.dy, anchor.dx, anchor.dy);
-      canvas.drawPath(path, roadBase);
-      canvas.drawPath(path, roadTop);
-    }
-  }
-
-  void _paintPlaza(Canvas canvas) {
-    final outer = _diamond(_center, 170, 82);
-    final inner = _diamond(_center, 108, 50);
-    canvas.drawPath(outer, Paint()..color = const Color(0xFF4B3A2E));
-    canvas.drawPath(inner, Paint()..color = const Color(0xFF9D7A49));
-    canvas.drawPath(
-      outer,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
-        ..color = Colors.white.withValues(alpha: 0.18),
-    );
-  }
-
-  void _paintDecor(Canvas canvas) {
-    const trees = [
-      Offset(430, 560),
-      Offset(510, 800),
-      Offset(1320, 570),
-      Offset(1390, 840),
-      Offset(650, 1030),
-      Offset(1180, 1010),
-    ];
-    const stones = [
-      Offset(690, 390),
-      Offset(1120, 390),
-      Offset(420, 690),
-      Offset(1420, 710),
-      Offset(870, 1040),
-    ];
-    const torches = [
-      Offset(800, 590),
-      Offset(1000, 590),
-      Offset(800, 720),
-      Offset(1000, 720),
-    ];
-
-    for (final tree in trees) {
-      _paintTree(canvas, tree);
-    }
-    for (final stone in stones) {
-      _paintStone(canvas, stone);
-    }
-    for (final torch in torches) {
-      _paintTorch(canvas, torch);
-    }
-  }
-
-  void _paintTree(Canvas canvas, Offset base) {
-    canvas.drawOval(Rect.fromCenter(center: base.translate(0, 10), width: 54, height: 20), Paint()..color = Colors.black.withValues(alpha: 0.18));
-    canvas.drawRect(Rect.fromCenter(center: base.translate(0, -10), width: 10, height: 28), Paint()..color = const Color(0xFF58351E));
-    for (int i = 0; i < 3; i++) {
-      final y = base.dy - 22 - i * 22;
-      final width = 34.0 - i * 5;
-      final path = Path()
-        ..moveTo(base.dx, y - 34)
-        ..lineTo(base.dx + width, y + 7)
-        ..lineTo(base.dx - width, y + 7)
-        ..close();
-      canvas.drawPath(path, Paint()..color = i.isEven ? const Color(0xFF2E7D32) : const Color(0xFF14532D));
-    }
-  }
-
-  void _paintStone(Canvas canvas, Offset base) {
-    canvas.drawOval(Rect.fromCenter(center: base.translate(0, 12), width: 58, height: 20), Paint()..color = Colors.black.withValues(alpha: 0.17));
-    final path = Path()
-      ..moveTo(base.dx - 26, base.dy + 9)
-      ..lineTo(base.dx - 12, base.dy - 20)
-      ..lineTo(base.dx + 14, base.dy - 24)
-      ..lineTo(base.dx + 30, base.dy + 2)
-      ..lineTo(base.dx + 16, base.dy + 18)
-      ..lineTo(base.dx - 14, base.dy + 20)
-      ..close();
-    canvas.drawPath(path, Paint()..color = const Color(0xFF6B7280));
-    canvas.drawCircle(base.translate(-6, -9), 4, Paint()..color = Colors.white.withValues(alpha: 0.18));
-  }
-
-  void _paintTorch(Canvas canvas, Offset base) {
-    canvas.drawLine(
-      base,
-      base.translate(0, -28),
-      Paint()
-        ..color = const Color(0xFF3A2417)
-        ..strokeWidth = 5
-        ..strokeCap = StrokeCap.round,
-    );
-    canvas.drawCircle(
-      base.translate(0, -32),
-      20,
-      Paint()
-        ..shader = RadialGradient(
-          colors: [
-            Colors.white.withValues(alpha: 0.80),
-            OperatorPalette.torchOrange.withValues(alpha: 0.86),
-            Colors.transparent,
-          ],
-        ).createShader(Rect.fromCenter(center: base.translate(0, -32), width: 46, height: 46)),
-    );
-  }
-
-  void _paintWall(Canvas canvas, Path top) {
-    canvas.drawPath(
-      top,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeJoin = StrokeJoin.round
-        ..strokeWidth = 24
-        ..color = const Color(0xFF2F332C),
-    );
-    canvas.drawPath(
-      top,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeJoin = StrokeJoin.round
-        ..strokeWidth = 7
-        ..color = OperatorPalette.parchmentGold.withValues(alpha: 0.48),
-    );
-  }
-
-  Path _diamond(Offset center, double radiusX, double radiusY) {
-    return Path()
-      ..moveTo(center.dx, center.dy - radiusY)
-      ..lineTo(center.dx + radiusX, center.dy)
-      ..lineTo(center.dx, center.dy + radiusY)
-      ..lineTo(center.dx - radiusX, center.dy)
-      ..close();
-  }
-
-  @override
-  bool shouldRepaint(covariant _CompoundMapPainter oldDelegate) => false;
 }
 
 class _CompoundAtmospherePainter extends CustomPainter {

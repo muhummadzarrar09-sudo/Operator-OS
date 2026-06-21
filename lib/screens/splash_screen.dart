@@ -7,6 +7,7 @@ import 'package:operator_os/providers/auth_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'home_screen.dart';
+import 'onboarding_screen.dart';
 import 'sign_in_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -59,8 +60,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     }
 
     final localUserId = ref.read(localUserIdProvider);
-    final destination = session != null || localUserId != null
-        ? const HomeScreen()
+    final isAuthenticated = session != null || localUserId != null;
+    final hasSeenWalkthrough = isAuthenticated
+        ? await hasCompletedOperatorOnboarding()
+        : false;
+    final destination = isAuthenticated
+        ? hasSeenWalkthrough
+            ? const HomeScreen()
+            : const OnboardingScreen(destination: HomeScreen())
         : const SignInScreen();
 
     if (!mounted) return;

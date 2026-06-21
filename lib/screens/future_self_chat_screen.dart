@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:operator_os/providers/ai_providers.dart';
 import 'package:operator_os/providers/ai_service_provider.dart';
 import 'package:operator_os/providers/auth_provider.dart';
+import 'package:operator_os/utils/sign_out_redirect.dart';
 
 class FutureSelfChatScreen extends ConsumerStatefulWidget {
   const FutureSelfChatScreen({super.key});
@@ -88,7 +89,7 @@ Future Self:''';
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authProvider.notifier).signOut(),
+            onPressed: () => signOutAndReturnToLogin(context, ref),
           ),
         ],
       ),

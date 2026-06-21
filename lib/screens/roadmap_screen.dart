@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:operator_os/core/building_config.dart';
 import 'package:operator_os/data/database.dart';
-import 'package:operator_os/providers/auth_provider.dart';
+import 'package:operator_os/utils/sign_out_redirect.dart';
 import 'package:operator_os/providers/roadmap_provider.dart';
 import 'package:operator_os/screens/boss_day_screen.dart';
 import 'package:operator_os/screens/roadmap_day_screen.dart';
@@ -21,7 +21,7 @@ class RoadmapScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authProvider.notifier).signOut(),
+            onPressed: () => signOutAndReturnToLogin(context, ref),
           ),
         ],
       ),
